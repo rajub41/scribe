@@ -155,7 +155,7 @@ int main(int argc, char **argv) {
     LOG_OPER("ERROR: Failed to register sigaction handler for SIGHUP");
     return -1;
   }
-  
+
   try {
     /* Increase number of fds */
     struct rlimit r_fd = {65535,65535};
@@ -196,12 +196,14 @@ int main(int argc, char **argv) {
 
     // seed random number generation with something reasonably unique
     srand(time(NULL) ^ getpid());
-
+    LOG_OPER("Creating handler for scribe ");
     g_Handler = shared_ptr<scribeHandler>(new scribeHandler(port, config_file));
+    LOG_OPER(" Handler created " + g_Handler);
     g_Handler->initialize();
 
+    LOG_OPER("Handler initialization is completed and starting the scribe server");
     scribe::startServer(); // never returns
-
+LOG_OPER("scribe server started ");
   } catch(const std::exception& e) {
     LOG_OPER("Exception in main: %s", e.what());
   }
@@ -702,6 +704,7 @@ void scribeHandler::initialize() {
     } else {
       config_file = configFilename;
     }
+    LOG_OPER("AAAAAA  Parsing the config ", config_file);
     localconfig.parseConfig(config_file);
     // overwrite the current StoreConf
     config = localconfig;
