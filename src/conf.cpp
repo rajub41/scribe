@@ -224,7 +224,7 @@ bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_
         continue;
       }
       string store_name = line.substr(1, pos - 1);
-      LOG_OPER("AAAAAAAAA storename ", store_name);
+      LOG_OPER("AAAAAAAAA storename %s", store_name.c_str());
       pStoreConf new_store(new StoreConf);
       if (parseStore(raw_config, new_store.get())) {
         if (0 == store_name.compare("store")) {
@@ -238,8 +238,8 @@ bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_
         if (parsed_config->stores.find(store_name) != parsed_config->stores.end()) {
           LOG_OPER("Bad config - duplicate store name %s", store_name.c_str());
         }
-        LOG_OPER("AAAAAAAA storename assigning to stores ", store_name);
-        LOG_OPER("AAAAAA new_store ", new_store);
+        LOG_OPER("AAAAAAAA storename assigning to stores %s", store_name.c_str());
+        //LOG_OPER("AAAAAA new_store %s", new_store);
         parsed_config->stores[store_name] = new_store;
       }
     } else {
