@@ -676,6 +676,7 @@ FileStore::FileStore(StoreQueue* storeq,
     addNewlines(false),
     encodeBase64Flag(false),
     lostBytes_(0) {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in constructor ");
 }
 
 FileStore::~FileStore() {
@@ -683,7 +684,7 @@ FileStore::~FileStore() {
 
 void FileStore::configure(pStoreConf configuration, pStoreConf parent) {
   FileStoreBase::configure(configuration, parent);
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in configure() ");
   // We can run using defaults for all of these, but there are
   // a couple of suspicious things we warn about.
   if (isBufferFile) {
@@ -717,6 +718,7 @@ void FileStore::configure(pStoreConf configuration, pStoreConf parent) {
 }
 
 bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal()  ");
   bool success = false;
   struct tm timeinfo;
 
@@ -727,6 +729,7 @@ bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
   }
 
   try {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() calling findNewestFile ");
     int suffix = findNewestFile(makeBaseFilename(current_time));
 
     if (incrementFilename) {
@@ -739,6 +742,7 @@ bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
     }
 
     string file = makeFullFilename(suffix, current_time);
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() fullFileName %s ", file);
 
     switch (rollPeriod) {
       case ROLL_DAILY:
@@ -756,11 +760,14 @@ bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
 
     if (writeFile) {
       if (writeMeta) {
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() write meta data %s  ", meta_logfile_prefix+file);
         writeFile->write(meta_logfile_prefix + file);
       }
+      LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() calling closeWriteFile() ");
       closeWriteFile();
     }
 
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() create a fileInterface for file %s ", file );
     writeFile = FileInterface::createFileInterface(fsType, file, isBufferFile);
     if (!writeFile) {
       LOG_OPER("[%s] Failed to create file <%s> of type <%s> for writing",
@@ -768,7 +775,7 @@ bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
       setStatus("file open error");
       return false;
     }
-
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal()  createDirectory()  filePath--%s ", baseFilePath);
     success = writeFile->createDirectory(baseFilePath);
 
     // If we created a subdirectory, we need to create two directories
@@ -782,7 +789,7 @@ bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
       setStatus("File open error");
       return false;
     }
-
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal()  openWrite() ");
     success = writeFile->openWrite();
 
 
@@ -828,7 +835,9 @@ bool FileStore::isOpen() {
 }
 
 void FileStore::closeWriteFile() {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in closeWriteFile()");
   if (writeFile) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in closeWriteFile()  close file ");
     writeFile->close();
     if (writeStats && !(writeFile->isOpen()) ) {
       time_t rawtime = time(NULL);
@@ -864,27 +873,32 @@ void FileStore::closeWriteFile() {
 }
 
 void FileStore::close() {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in close() calling closeWriteFile()");
   closeWriteFile();
 }
 
 void FileStore::flush() {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in flush()  calling writeFile->flush() ");
   if (writeFile) {
     writeFile->flush();
   }
 }
 
 shared_ptr<Store> FileStore::copy(const std::string &category) {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in copy()  ");
   FileStore *store = new FileStore(storeQueue, category, multiCategory,
                                    isBufferFile);
   shared_ptr<Store> copied = shared_ptr<Store>(store);
 
   store->addNewlines = addNewlines;
   store->encodeBase64Flag = encodeBase64Flag;
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in copy() calling copyCommon()");
   store->copyCommon(this);
   return copied;
 }
 
 bool FileStore::handleMessages(boost::shared_ptr<logentry_vector_t> messages) {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in handleMessages()  ");
 
   if (!isOpen()) {
     if (!open()) {
@@ -893,7 +907,7 @@ bool FileStore::handleMessages(boost::shared_ptr<logentry_vector_t> messages) {
       return false;
     }
   }
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in handleMessages()  calling writeMessages()");
   // write messages to current file
   return writeMessages(messages);
 }
@@ -926,6 +940,7 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
          ++iter) {
       temp_message = (*iter)->message;
       if(encodeBase64Flag) {
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in writeMessages() encodingBase64");
           //char sz[temp_message.length()];
 	  //sz = new char[temp_message.length() + 1];
 
@@ -1019,6 +1034,7 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
   }
 
   if (!success) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in writeMessages() in close()");
     close();
 
     // update messages to include only the messages that were not handled
@@ -1033,6 +1049,7 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
 // Deletes the oldest file
 // currently gets invoked from within a bufferstore
 void FileStore::deleteOldest(struct tm* now) {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in deleteOldest()");
 
   int index = findOldestFile(makeBaseFilename(now));
   if (index < 0) {
@@ -1050,6 +1067,7 @@ void FileStore::deleteOldest(struct tm* now) {
 // Replace the messages in the oldest file at this timestamp with the input messages
 bool FileStore::replaceOldest(boost::shared_ptr<logentry_vector_t> messages,
                               struct tm* now) {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest()  --baseName %s ", base_name);
   string base_name = makeBaseFilename(now);
   int index = findOldestFile(base_name);
   if (index < 0) {
@@ -1058,16 +1076,19 @@ bool FileStore::replaceOldest(boost::shared_ptr<logentry_vector_t> messages,
   }
 
   string filename = makeFullFilename(index, now);
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest() fileName -- %s", filename);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest() calling close() ");
   // Need to close and reopen store in case we already have this file open
   close();
 
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() replaceOldest()   create a new FileInterface");
   shared_ptr<FileInterface> infile = FileInterface::createFileInterface(fsType,
                                           filename, isBufferFile);
 
   // overwrite the old contents of the file
   bool success;
   if (infile->openTruncate()) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest()  openTruncated   calling writeMessages()");
     success = writeMessages(messages, infile);
 
   } else {
@@ -1075,9 +1096,10 @@ bool FileStore::replaceOldest(boost::shared_ptr<logentry_vector_t> messages,
              categoryHandled.c_str(), filename.c_str());
     success = false;
   }
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest()  close the file");
   // close this file and re-open store
   infile->close();
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest() calling open()");
   open();
 
   return success;
@@ -1087,7 +1109,7 @@ bool FileStore::readOldest(/*out*/ boost::shared_ptr<logentry_vector_t> messages
                            struct tm* now) {
 
   long loss;
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in readOldest() ");
   int index = findOldestFile(makeBaseFilename(now));
   if (index < 0) {
     // This isn't an error. It's legit to call readOldest when there aren't any
@@ -1095,7 +1117,7 @@ bool FileStore::readOldest(/*out*/ boost::shared_ptr<logentry_vector_t> messages
     return true;
   }
   std::string filename = makeFullFilename(index, now);
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in readOldest() fileName --%s ", filename);
   shared_ptr<FileInterface> infile = FileInterface::createFileInterface(fsType,
                                               filename, isBufferFile);
 
@@ -1147,8 +1169,9 @@ bool FileStore::readOldest(/*out*/ boost::shared_ptr<logentry_vector_t> messages
 
 bool FileStore::empty(struct tm* now) {
   std::vector<std::string> files = FileInterface::list(filePath, fsType);
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in empty()");
   std::string base_filename = makeBaseFilename(now);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in empty() baseFileName -- %s ", base_filename);
   for (std::vector<std::string>::iterator iter = files.begin();
        iter != files.end();
        ++iter) {
@@ -1162,6 +1185,7 @@ bool FileStore::empty(struct tm* now) {
       }
     } // else it doesn't match the filename for this store
   }
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in empty()   returning true ");
   return true;
 
 }
