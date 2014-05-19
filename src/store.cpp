@@ -83,18 +83,23 @@ boost::shared_ptr<Store>
 Store::createStore(StoreQueue* storeq, const string& type,
                    const string& category, bool readable,
                    bool multi_category) {
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store ");
   if (0 == type.compare("file")) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store creating fileStore ");
     return shared_ptr<Store>(new FileStore(storeq, category, multi_category,
                                           readable));
   } else if (0 == type.compare("buffer")) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store creating bufferStore ");
     return shared_ptr<Store>(new BufferStore(storeq,category, multi_category));
   } else if (0 == type.compare("network")) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store creating networkStore ");
     return shared_ptr<Store>(new NetworkStore(storeq, category,
                                               multi_category));
   } else if (0 == type.compare("bucket")) {
     return shared_ptr<Store>(new BucketStore(storeq, category,
                                             multi_category));
   } else if (0 == type.compare("thriftfile")) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store creating thriftFIleStore ");
     return shared_ptr<Store>(new ThriftFileStore(storeq, category,
                                                 multi_category));
   } else if (0 == type.compare("null")) {
@@ -102,6 +107,7 @@ Store::createStore(StoreQueue* storeq, const string& type,
   } else if (0 == type.compare("multi")) {
     return shared_ptr<Store>(new MultiStore(storeq, category, multi_category));
   } else if (0 == type.compare("category")) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store creating categoryStore ");
     return shared_ptr<Store>(new CategoryStore(storeq, category,
                                               multi_category));
   } else if (0 == type.compare("multifile")) {
@@ -111,6 +117,7 @@ Store::createStore(StoreQueue* storeq, const string& type,
     return shared_ptr<Store>(new ThriftMultiFileStore(storeq, category,
                                                       multi_category));
   } else {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store .. not creating specific stores,, create other than specific store ");
     return shared_ptr<Store>();
   }
 }
@@ -124,6 +131,8 @@ Store::Store(StoreQueue* storeq,
     storeType(type),
     isPrimary(false),
     storeQueue(storeq) {
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in store() constructor ");
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in store() constructor--- init statusMutex  ");
   pthread_mutex_init(&statusMutex, NULL);
 }
 
@@ -132,19 +141,26 @@ Store::~Store() {
 }
 
 void Store::configure(pStoreConf configuration, pStoreConf parent) {
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in configure() assign storeconf and setParent to the storeConf ");
   storeConf = configuration;
   storeConf->setParent(parent);
 }
 
 void Store::setStatus(const std::string& new_status) {
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in setStatus() add mutex lock on statusMutex  ");
   pthread_mutex_lock(&statusMutex);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in setStatus() assign new status ");
   status = new_status;
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in setStatus() unlock statusMutexLock");
   pthread_mutex_unlock(&statusMutex);
 }
 
 std::string Store::getStatus() {
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in getStatus() add lock on statusMutex ");
   pthread_mutex_lock(&statusMutex);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in getStatus() getStatus");
   std::string return_status(status);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in getStatus() unlock statusMutex ");
   pthread_mutex_unlock(&statusMutex);
   return return_status;
 }
@@ -226,6 +242,7 @@ FileStoreBase::FileStoreBase(StoreQueue* storeq,
     eventSize(0),
     lastRollTime(0),
     eventsWritten(0) {
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStoreBase() constructor ");
 }
 
 FileStoreBase::~FileStoreBase() {
@@ -233,6 +250,7 @@ FileStoreBase::~FileStoreBase() {
 
 void FileStoreBase::configure(pStoreConf configuration, pStoreConf parent) {
   Store::configure(configuration, parent);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in configure(): fileStoreBase baseFilePath %s ---- subDirectory %s -----tmp  %s", baseFilePath, subDirectory, tmp);
 
   // We can run using defaults for all of these, but there are
   // a couple of suspicious things we warn about.
@@ -249,7 +267,7 @@ void FileStoreBase::configure(pStoreConf configuration, pStoreConf parent) {
   if (!subDirectory.empty()) {
     filePath += "/" + subDirectory;
   }
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in configure() : fileStoreBase filePath %s----- baseFileName %s ", filePath, baseFileName);
 
   if (!configuration->getString("base_filename", baseFileName)) {
     LOG_OPER(
@@ -357,6 +375,7 @@ void FileStoreBase::configure(pStoreConf configuration, pStoreConf parent) {
 }
 
 void FileStoreBase::copyCommon(const FileStoreBase *base) {
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in copyCommon(): fileStoreBase ");
   subDirectory = base->subDirectory;
   chunkSize = base->chunkSize;
   maxSize = base->maxSize;
@@ -389,12 +408,13 @@ void FileStoreBase::copyCommon(const FileStoreBase *base) {
 }
 
 bool FileStoreBase::open() {
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in open(): fileStoreBase calling openInternal()");
   return openInternal(rotateOnReopen, NULL);
 }
 
 // Decides whether conditions are sufficient for us to roll files
 void FileStoreBase::periodicCheck() {
-
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in periodicCheck(): fileStoreBase ");
   time_t rawtime = time(NULL);
   struct tm timeinfo;
   localtime_r(&rawtime, &timeinfo);
@@ -421,6 +441,7 @@ void FileStoreBase::periodicCheck() {
   }
 
   if (rotate) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in periodicCheck(): fileStoreBase  rotateFile() ");
     rotateFile(rawtime);
   }
 }
@@ -435,8 +456,9 @@ void FileStoreBase::rotateFile(time_t currentTime) {
            categoryHandled.c_str(), timeinfo.tm_hour, timeinfo.tm_min,
            makeBaseFilename(&timeinfo).c_str(), currentSize,
            maxSize == ULONG_MAX ? 0 : maxSize);
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in rotateFIle(): fileStoreBase printStats() ");
   printStats();
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in openInternal(): fileStoreBase calling openInternal()");
   openInternal(true, &timeinfo);
 }
 
@@ -450,7 +472,7 @@ string FileStoreBase::makeFullFilename(int suffix, struct tm* creation_time,
   }
   filename << makeBaseFilename(creation_time);
   filename << '_' << setw(5) << setfill('0') << suffix;
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in makeFullFileName(): fileStoreBase  fullFileName %s ", fileName.str());
   return filename.str();
 }
 
@@ -488,12 +510,13 @@ string FileStoreBase::makeBaseFilename(struct tm* creation_time) {
     }
 
   }
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in makeBaseFileName() : fileStoreBase baseFileName %s ", filename.str());
   return filename.str();
 }
 
 // returns the suffix of the newest file matching base_filename
 int FileStoreBase::findNewestFile(const string& base_filename) {
-
+	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store findNewestFile(): fileStoreBase ");
   std::vector<std::string> files = FileInterface::list(filePath, fsType);
 
   int max_suffix = -1;
@@ -507,6 +530,7 @@ int FileStoreBase::findNewestFile(const string& base_filename) {
       max_suffix = suffix;
     }
   }
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store findNewestFile(): fileStoreBase max suffix %d ", max_suffix);
   return max_suffix;
 }
 
@@ -526,6 +550,7 @@ int FileStoreBase::findOldestFile(const string& base_filename) {
       min_suffix = suffix;
     }
   }
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store findOldestFile(): fileStoreBase min suffix %d ", min_suffix);
   return min_suffix;
 }
 
@@ -543,6 +568,7 @@ int FileStoreBase::getFileSuffix(const string& filename,
     stream << filename.substr(suffix_pos + 1);
     stream >> suffix;
   }
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store getFileSuffix(): fileStoreBase  suffix %d ", suffix);
   return suffix;
 }
 
