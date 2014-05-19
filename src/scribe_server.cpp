@@ -198,14 +198,17 @@ int main(int argc, char **argv) {
     srand(time(NULL) ^ getpid());
 
     g_Handler = shared_ptr<scribeHandler>(new scribeHandler(port, config_file));
+    LOG_OPER("SSSSSSSSSSSSS scribe handler created ");
+    LOG_OPER("AAAAAAAAAAA initializing the scribe configuration ");
     g_Handler->initialize();
-
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA initialization is completed ");
+    LOG_OPER("AAAAAAAAAAAAAAAAA starting scribe server ");
     scribe::startServer(); // never returns
 
   } catch(const std::exception& e) {
     LOG_OPER("Exception in main: %s", e.what());
   }
-
+  LOG_OPER("AAAAAAAAAAAAAAAA after try block after starting server ");
   // Register back the old sigaction handlers for SIGINT/SIGTERM/SIGHUP
   if (sigaction(SIGINT, &old_sigint_sa, NULL) < 0) {
     LOG_OPER("ERROR: Failed to register old sigaction handler for SIGINT");
@@ -241,6 +244,7 @@ scribeHandler::scribeHandler(unsigned long int server_port, const std::string& c
     newThreadPerCategory(true) {
   time(&lastMsgTime);
   scribeHandlerLock = scribe::concurrency::createReadWriteMutex();
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAA IN  scribe handler constructor ");
 }
 
 scribeHandler::~scribeHandler() {
@@ -253,7 +257,7 @@ scribeHandler::~scribeHandler() {
 fb_status scribeHandler::getStatus() {
   RWGuard monitor(*scribeHandlerLock);
   Guard status_monitor(statusLock);
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAA lock on scribe handler lock and status lock");
   fb_status return_status(status);
   if (status == ALIVE) {
     for (category_map_t::iterator cat_iter = categories.begin();
@@ -262,6 +266,7 @@ fb_status scribeHandler::getStatus() {
       for (store_list_t::iterator store_iter = cat_iter->second->begin();
            store_iter != cat_iter->second->end();
            ++store_iter) {
+    	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in getStatus() of store [%s]", (*store_iter)->getCategoryHandled());
         if (!(*store_iter)->getStatus().empty()) {
           return_status = WARNING;
           return return_status;
@@ -292,7 +297,7 @@ void scribeHandler::getStatusDetails(std::string& _return) {
       for (store_list_t::iterator store_iter = cat_iter->second->begin();
           store_iter != cat_iter->second->end();
           ++store_iter) {
-
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in getStatusDetails() of store [%s]", (*store_iter)->getCategoryHandled());
         if (!(_return = (*store_iter)->getStatus()).empty()) {
           return;
         }
@@ -335,7 +340,7 @@ bool scribeHandler::createCategoryFromModel(
   // Make sure the category name is sane.
   try {
     string clean_path = boost::filesystem::path(category).string();
-
+LOG_OPER("AAAAAAAAAAAAAAA in createCategoryFromMOdel() %s ", clean_path);
     if (clean_path.compare(category) != 0) {
       LOG_OPER("Category not a valid boost filename");
       return false;
@@ -439,6 +444,7 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
       shared_ptr<store_list_t> pstores = cat_prefix_iter->second;
       for (store_list_t::iterator store_iter = pstores->begin();
           store_iter != pstores->end(); ++store_iter) {
+    	  LOG_OPER("AAAAAAAAAAAAAAAA in createNewCategory() %s ---- category %s ", (*store_iter)->getCategoryHandled(), category);
         createCategoryFromModel(category, *store_iter);
       }
       category_map_t::iterator cat_iter = categories.find(category);
@@ -489,7 +495,7 @@ void scribeHandler::addMessage(
     boost::shared_ptr<LogEntry> ptr(new LogEntry);
     ptr->category = entry.category;
     ptr->message = entry.message;
-
+LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in addMessage() ", entry.category);
     (*store_iter)->addMessage(ptr);
   }
 
@@ -521,6 +527,8 @@ ResultCode scribeHandler::Log(const vector<LogEntry>&  messages) {
   ResultCode result = TRY_LATER;
 
   scribeHandlerLock->acquireRead();
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA in Log() scribe handler lock is aquired for reading ");
+  LOG_OPER("AAAAAAAAAAAAAAAAAAA in Log() numbe rof messages  i.e. vector size %lu ", messages.size());
   if(status == STOPPING) {
     result = TRY_LATER;
     goto end;
@@ -540,13 +548,14 @@ ResultCode scribeHandler::Log(const vector<LogEntry>&  messages) {
       incCounter("received blank category");
       continue;
     }
-
+LOG_OPER("AAAAAAAAAAAAA in Log() msg category %s ", (*msg_iter).category);
     shared_ptr<store_list_t> store_list;
     string category = (*msg_iter).category;
 
     category_map_t::iterator cat_iter;
     // First look for an exact match of the category
     if ((cat_iter = categories.find(category)) != categories.end()) {
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in Log() store list found for category %s ", category);
       store_list = cat_iter->second;
     }
 
@@ -555,7 +564,7 @@ ResultCode scribeHandler::Log(const vector<LogEntry>&  messages) {
       // Need write lock to create a new category
       scribeHandlerLock->release();
       scribeHandlerLock->acquireWrite();
-
+LOG_OPER("AAAAAAAAAAAAAAAAAAAA in Log() acquired write lock  scirbehandler lock");
       // This may cause some duplicate messages if some messages in this batch
       // were already added to queues
       if(status == STOPPING) {
