@@ -50,12 +50,13 @@ StoreQueue::StoreQueue(const string& type, const string& category,
     maxWriteInterval(DEFAULT_MAX_WRITE_INTERVAL),
     mustSucceed(true),
     isAudit(false) {
-
+LOG_OPER("AAAAAAAAAAAAAAAAAAAAAA in storeQueue() constructor %s ", category);
   store = Store::createStore(this, type, category,
                             false, multiCategory);
   if (!store) {
     throw std::runtime_error("createStore failed in StoreQueue constructor. Invalid type?");
   }
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa in storeQueue() calling storeInitCommon()");
   storeInitCommon();
 }
 
@@ -72,11 +73,12 @@ StoreQueue::StoreQueue(const boost::shared_ptr<StoreQueue> example,
     maxWriteInterval(example->maxWriteInterval),
     mustSucceed(example->mustSucceed),
     isAudit(false) {
-
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAA in storeQueue() constructor %s   example ", category);
   store = example->copyStore(category);
   if (!store) {
     throw std::runtime_error("createStore failed copying model store");
   }
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa in storeQueue() calling storeInitCommon()");
   storeInitCommon();
 }
 
@@ -97,14 +99,17 @@ void StoreQueue::addMessage(boost::shared_ptr<LogEntry> entry) {
     bool waitForWork = false;
 
     pthread_mutex_lock(&msgMutex);
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in addMessage() add mutex lock msgMutex ");
     msgQueue->push_back(entry);
     msgQueueSize += entry->message.size();
 
     waitForWork = (msgQueueSize >= targetWriteSize) ? true : false;
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAA in addMessage() unlock msgMutex lock");
     pthread_mutex_unlock(&msgMutex);
 
     // Wake up store thread if we have enough messages
     if (waitForWork == true) {
+    	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in addMessage() add mutex lock hasWorkMutex --- waitfor work is true ");
       // signal that there is work to do if not already signaled
       pthread_mutex_lock(&hasWorkMutex);
       if (!hasWork) {
@@ -112,6 +117,8 @@ void StoreQueue::addMessage(boost::shared_ptr<LogEntry> entry) {
         pthread_cond_signal(&hasWorkCond);
       }
       pthread_mutex_unlock(&hasWorkMutex);
+      LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAA in addMessage() unlock hasworkMutex lock");
+
     }
   }
 }
@@ -122,11 +129,14 @@ void StoreQueue::configureAndOpen(pStoreConf configuration) {
   if (isModel) {
     configureInline(configuration);
   } else {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in configureAndOpen() add mutex lock cmdMutex ");
     pthread_mutex_lock(&cmdMutex);
     StoreCommand cmd(CMD_CONFIGURE, configuration);
     cmdQueue.push(cmd);
     pthread_mutex_unlock(&cmdMutex);
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in configureAndOpen() unlock mutex lock cmdMutex ");
 
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in configureAndOpen() add mutex lock hasWorkMutex ");
     // signal that there is work to do if not already signaled
     pthread_mutex_lock(&hasWorkMutex);
     if (!hasWork) {
@@ -134,6 +144,7 @@ void StoreQueue::configureAndOpen(pStoreConf configuration) {
       pthread_cond_signal(&hasWorkCond);
     }
     pthread_mutex_unlock(&hasWorkMutex);
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in configureAndOpen() unlock mutex lock hasWorkMutex ");
   }
 }
 
@@ -163,10 +174,14 @@ void StoreQueue::open() {
   if (isModel) {
     LOG_OPER("ERROR: called open() on model store");
   } else {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue open() add mutex lock cmdMutex ");
     pthread_mutex_lock(&cmdMutex);
     StoreCommand cmd(CMD_OPEN);
     cmdQueue.push(cmd);
     pthread_mutex_unlock(&cmdMutex);
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue open() unlock mutex lock cmdMutex ");
+
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue open() add mutex lock hasWorkMutex ");
 
     // signal that there is work to do if not already signaled
     pthread_mutex_lock(&hasWorkMutex);
@@ -175,6 +190,8 @@ void StoreQueue::open() {
       pthread_cond_signal(&hasWorkCond);
     }
     pthread_mutex_unlock(&hasWorkMutex);
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue open() unlock mutex lock hasWorkMutex ");
+
   }
 }
 
@@ -219,6 +236,8 @@ void StoreQueue::threadMember() {
   bool open = false;
   while (!stop) {
 
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember() add mutex lock cmdMutex ");
+
     // handle commands
     //
     pthread_mutex_lock(&cmdMutex);
@@ -228,15 +247,21 @@ void StoreQueue::threadMember() {
 
       switch (cmd.command) {
       case CMD_CONFIGURE:
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember() cmd is configure ");
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember() configureInline() ");
         configureInline(cmd.configuration);
+        LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  openInLine() ");
         openInline();
         open = true;
         break;
       case CMD_OPEN:
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember() cmd is open ");
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  openInLine() ");
         openInline();
         open = true;
         break;
       case CMD_STOP:
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember() cmd is stop ");
         stop = true;
         break;
       default:
@@ -259,8 +284,9 @@ void StoreQueue::threadMember() {
         msgQueueSize >= targetWriteSize)) {
       auditMgr->performAuditTask();
     }
-
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  add mutex lock msgMutex ");
     pthread_mutex_lock(&msgMutex);
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  unlock mutex lock cmdMutex ");
     pthread_mutex_unlock(&cmdMutex);
 
     boost::shared_ptr<logentry_vector_t> messages;
@@ -272,10 +298,12 @@ void StoreQueue::threadMember() {
         msgQueueSize >= targetWriteSize) {
 
       if (failedMessages) {
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  processing failed messages ");
         // process any messages we were not able to process last time
         messages = failedMessages;
         failedMessages = boost::shared_ptr<logentry_vector_t>();
       } else if (msgQueueSize > 0) {
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  process message in queue msgQueueSize > 0 ");
         // process message in queue
         messages = msgQueue;
         msgQueue = boost::shared_ptr<logentry_vector_t>(new logentry_vector_t);
@@ -285,14 +313,17 @@ void StoreQueue::threadMember() {
       // reset timer
       last_handle_messages = this_loop;
     }
-
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  unlock mutex lock msgMutex ");
     pthread_mutex_unlock(&msgMutex);
 
     if (messages) {
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storeQueue threadMember() handle messages %lu ", messages->size());
       if (!store->handleMessages(messages)) {
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  calling processFailedMessages() ", messages->size());
         // Store could not handle these messages
         processFailedMessages(messages);
       }
+      LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  flush the store ");
       store->flush();
     }
 
@@ -301,7 +332,7 @@ void StoreQueue::threadMember() {
       abs_timeout.tv_sec = min(last_periodic_check + checkPeriod,
           last_handle_messages + maxWriteInterval);
       abs_timeout.tv_nsec = 0;
-
+      LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  add mutex lock on hasWorkMutex ");
       // wait until there's some work to do or we timeout
       pthread_mutex_lock(&hasWorkMutex);
       if (!hasWork) {
@@ -309,10 +340,11 @@ void StoreQueue::threadMember() {
       }
       hasWork = false;
       pthread_mutex_unlock(&hasWorkMutex);
+      LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  unlock mutex lock hasWorkMutex ");
     }
 
   } // while (!stop)
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue threadMember()  close the store ");
   store->close();
 }
 
@@ -339,11 +371,12 @@ void StoreQueue::storeInitCommon() {
   // model store doesn't need this stuff
   if (!isModel) {
     msgQueue = boost::shared_ptr<logentry_vector_t>(new logentry_vector_t);
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue storeInitCommon()  init mutexes cmdMutex, msgMutex, hasWorkMutex, hsWorkCond ");
     pthread_mutex_init(&cmdMutex, NULL);
     pthread_mutex_init(&msgMutex, NULL);
     pthread_mutex_init(&hasWorkMutex, NULL);
     pthread_cond_init(&hasWorkCond, NULL);
-
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAA in storequeue storeInitCommon()  create a storeThread calling pthread_create ");
     pthread_create(&storeThread, NULL, threadStatic, (void*) this);
   }
 }
@@ -367,9 +400,11 @@ void StoreQueue::configureInline(pStoreConf configuration) {
 
 void StoreQueue::openInline() {
   if (store->isOpen()) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in storeQueue openInline() store is already opened, closing the store  ");
     store->close();
   }
   if (!isModel) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in storeQueue openInline() open store ");
     store->open();
   }
 }
