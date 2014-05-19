@@ -1394,6 +1394,7 @@ BufferStore::BufferStore(StoreQueue* storeq,
     state(DISCONNECTED),
     flushStreaming(false),
     maxByPassRatio(DEFAULT_BUFFERSTORE_BYPASS_MAXQSIZE_RATIO) {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() constructor ");
 
     lastOpenAttempt = time(NULL);
 
@@ -1405,6 +1406,7 @@ BufferStore::~BufferStore() {
 }
 
 void BufferStore::configure(pStoreConf configuration, pStoreConf parent) {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() ");
   Store::configure(configuration, parent);
 
   // Constructor defaults are fine if these don't exist
@@ -1481,9 +1483,11 @@ void BufferStore::configure(pStoreConf configuration, pStoreConf parent) {
       setStatus(msg);
       cout << msg << endl;
     } else {
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create secondary store category -- %s ", categoryHandled);
       // If replayBuffer is true, then we need to create a readable store
       secondaryStore = createStore(storeQueue, type, categoryHandled,
                                    replayBuffer, multiCategory);
+      LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() configure secondaryStore ");
       secondaryStore->configure(secondary_store_conf, storeConf);
     }
   }
@@ -1506,8 +1510,10 @@ void BufferStore::configure(pStoreConf configuration, pStoreConf parent) {
       string msg("Bad config - buffer primary store cannot be multistore");
       setStatus(msg);
     } else {
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create a primary store category--%s " categoryHandled);
       primaryStore = createStore(storeQueue, type, categoryHandled, false,
                                   multiCategory);
+      LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() configure primary store  ");
       primaryStore->configure(primary_store_conf, storeConf);
       // set the primary flag for this store to true. This will be used later
       // to decide whether to audit the sent messages. 
@@ -1520,10 +1526,12 @@ void BufferStore::configure(pStoreConf configuration, pStoreConf parent) {
   // If the config is bad we'll still try to write the data to a
   // default location on local disk.
   if (!secondaryStore) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create secondary store  type file category--%s ", categoryHandled);
     secondaryStore = createStore(storeQueue, "file", categoryHandled, true,
                                 multiCategory);
   }
   if (!primaryStore) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create primary store  type file category--%s ", categoryHandled);
     primaryStore = createStore(storeQueue, "file", categoryHandled, false,
                                multiCategory);
   }
@@ -1537,17 +1545,22 @@ bool BufferStore::open() {
 
   // try to open the primary store, and set the state accordingly
   if (primaryStore->open()) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open()  primary store is opened");
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open() change state to sending buffer );
     // in case there are files left over from a previous instance
     changeState(SENDING_BUFFER);
 
     // If we don't need to send buffers, skip to streaming
     if (!replayBuffer) {
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open() change state to streaming );
       // We still switch state to SENDING_BUFFER first just to make sure we
       // can open the secondary store
       changeState(STREAMING);
     }
   } else {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open() primary store is not opened, open secondary store ");
     secondaryStore->open();
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open() change state to DisConnected");
     changeState(DISCONNECTED);
   }
 
@@ -1556,10 +1569,12 @@ bool BufferStore::open() {
 
 void BufferStore::close() {
   if (primaryStore->isOpen()) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() close()  primary store is opened ..flush and close the primary store");
     primaryStore->flush();
     primaryStore->close();
   }
   if (secondaryStore->isOpen()) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() secondary store is opened.. flush and close the secondary store ");
     secondaryStore->flush();
     secondaryStore->close();
   }
@@ -1575,6 +1590,7 @@ void BufferStore::flush() {
 }
 
 shared_ptr<Store> BufferStore::copy(const std::string &category) {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in copy()");
   BufferStore *store = new BufferStore(storeQueue, category, multiCategory);
   shared_ptr<Store> copied = shared_ptr<Store>(store);
 
@@ -1597,23 +1613,27 @@ shared_ptr<Store> BufferStore::copy(const std::string &category) {
 }
 
 bool BufferStore::handleMessages(boost::shared_ptr<logentry_vector_t> messages) {
-
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in handleMessages() messages size ", messages->size());
   if (state == STREAMING || (flushStreaming && state == SENDING_BUFFER)) {
+
     if (primaryStore->handleMessages(messages)) {
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in handleMessages() handled messages in primarystore ");
       if (adaptiveBackoff) {
         setNewRetryInterval(true);
       }
       return true;
     } else {
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in handleMessages() not able to handle messages with primary, change state to Disconnected ");
       changeState(DISCONNECTED);
     }
   }
 
   if (state != STREAMING) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in handleMessages() state is not streaming, hadnlemessages with secondaryStore ");
     // If this fails there's nothing else we can do here.
     return secondaryStore->handleMessages(messages);
   }
-
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in handleMessages() returning false ");
   return false;
 }
 
@@ -1669,6 +1689,7 @@ void BufferStore::changeState(buffer_state_t new_state) {
 }
 
 void BufferStore::periodicCheck() {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() ");
 
   // This class is responsible for checking its children
   primaryStore->periodicCheck();
@@ -1679,12 +1700,17 @@ void BufferStore::periodicCheck() {
   localtime_r(&now, &nowinfo);
 
   if (state == DISCONNECTED) {
+		LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() state is disconnected ");
+
     if (now - lastOpenAttempt > retryInterval) {
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() open primary store ");
       if (primaryStore->open()) {
         // Success.  Check if we need to send buffers from secondary to primary
         if (replayBuffer) {
+        	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() change state to sendingBuffer from Disconnected ");
           changeState(SENDING_BUFFER);
         } else {
+        	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() change state to streaming from disconnected");
           changeState(STREAMING);
         }
       } else {
@@ -1696,6 +1722,7 @@ void BufferStore::periodicCheck() {
 
   // send data in case of backup
   if (state == SENDING_BUFFER) {
+		LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() state is sending buffer ");
     // if queue size is getting large return so that there is time to forward
     // incoming messages directly to the primary store without buffering to
     // secondary store.
@@ -1719,6 +1746,8 @@ void BufferStore::periodicCheck() {
         boost::shared_ptr<logentry_vector_t> messages(new logentry_vector_t);
         // Reads come complete buffered file
         // this file size is controlled by max_size in the configuration
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() readOldest() with secondary store ");
+
         if (secondaryStore->readOldest(messages, &nowinfo)) {
 
           unsigned long size = messages->size();
@@ -1749,6 +1778,8 @@ void BufferStore::periodicCheck() {
               break;
             }
           }  else {
+        		LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() deleteOldest() secondary store");
+
             // else it's valid for read to not find anything but not error
             secondaryStore->deleteOldest(&nowinfo);
           }
@@ -1807,7 +1838,7 @@ void BufferStore::periodicCheck() {
  * 'retry_interval_range'
  */
 void BufferStore::setNewRetryInterval(bool success) {
-
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() setNewRetryInterval ");
   if (adaptiveBackoff) {
     time_t prevRetryInterval = retryInterval;
     if (success) {
@@ -1864,6 +1895,7 @@ switch (state) {
 }
 
 std::string BufferStore::getStatus() {
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() in getStatus()");
 
   // This order is intended to give precedence to the errors
   // that are likely to be the worst. We can handle a problem
@@ -1875,6 +1907,8 @@ std::string BufferStore::getStatus() {
   if (return_status.empty()) {
     return_status = primaryStore->getStatus();
   }
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() returning status as %s ", return_status);
+
   return return_status;
 }
 
