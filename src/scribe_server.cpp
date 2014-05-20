@@ -266,7 +266,7 @@ fb_status scribeHandler::getStatus() {
       for (store_list_t::iterator store_iter = cat_iter->second->begin();
            store_iter != cat_iter->second->end();
            ++store_iter) {
-    	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in getStatus() of store [%s]", (*store_iter)->getCategoryHandled());
+    	 LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in getStatus() of store [%s]", (*store_iter)->getCategoryHandled().c_str());
         if (!(*store_iter)->getStatus().empty()) {
           return_status = WARNING;
           return return_status;
@@ -297,7 +297,7 @@ void scribeHandler::getStatusDetails(std::string& _return) {
       for (store_list_t::iterator store_iter = cat_iter->second->begin();
           store_iter != cat_iter->second->end();
           ++store_iter) {
-    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in getStatusDetails() of store [%s]", (*store_iter)->getCategoryHandled());
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in getStatusDetails() of store [%s]", (*store_iter)->getCategoryHandled().c_str());
         if (!(_return = (*store_iter)->getStatus()).empty()) {
           return;
         }
@@ -340,7 +340,7 @@ bool scribeHandler::createCategoryFromModel(
   // Make sure the category name is sane.
   try {
     string clean_path = boost::filesystem::path(category).string();
-LOG_OPER("AAAAAAAAAAAAAAA in createCategoryFromMOdel() %s ", clean_path);
+LOG_OPER("AAAAAAAAAAAAAAA in createCategoryFromMOdel() %s ", clean_path.c_str());
     if (clean_path.compare(category) != 0) {
       LOG_OPER("Category not a valid boost filename");
       return false;
@@ -444,7 +444,7 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
       shared_ptr<store_list_t> pstores = cat_prefix_iter->second;
       for (store_list_t::iterator store_iter = pstores->begin();
           store_iter != pstores->end(); ++store_iter) {
-    	  LOG_OPER("AAAAAAAAAAAAAAAA in createNewCategory() %s ---- category %s ", (*store_iter)->getCategoryHandled(), category);
+    	  LOG_OPER("AAAAAAAAAAAAAAAA in createNewCategory() %s ---- category %s ", (*store_iter)->getCategoryHandled().c_str(), category.c_str());
         createCategoryFromModel(category, *store_iter);
       }
       category_map_t::iterator cat_iter = categories.find(category);
@@ -477,6 +477,8 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
     }
   }
 
+  // create a new store for the non white-listed category
+
   return store_list;
 }
 
@@ -495,7 +497,7 @@ void scribeHandler::addMessage(
     boost::shared_ptr<LogEntry> ptr(new LogEntry);
     ptr->category = entry.category;
     ptr->message = entry.message;
-LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in addMessage() ", entry.category);
+LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in addMessage() ", entry.category.c_str());
     (*store_iter)->addMessage(ptr);
   }
 
@@ -548,14 +550,14 @@ ResultCode scribeHandler::Log(const vector<LogEntry>&  messages) {
       incCounter("received blank category");
       continue;
     }
-LOG_OPER("AAAAAAAAAAAAA in Log() msg category %s ", (*msg_iter).category);
+LOG_OPER("AAAAAAAAAAAAA in Log() msg category %s ", (*msg_iter).category.c_str());
     shared_ptr<store_list_t> store_list;
     string category = (*msg_iter).category;
 
     category_map_t::iterator cat_iter;
     // First look for an exact match of the category
     if ((cat_iter = categories.find(category)) != categories.end()) {
-    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in Log() store list found for category %s ", category);
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAA in Log() store list found for category %s ", category.c_str());
       store_list = cat_iter->second;
     }
 
@@ -712,6 +714,7 @@ void scribeHandler::initialize() {
       config_file = configFilename;
     }
     localconfig.parseConfig(config_file);
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAA in scribe_server.cpp in initialize() prase the configuration" );
     // overwrite the current StoreConf
     config = localconfig;
 
@@ -761,12 +764,13 @@ void scribeHandler::initialize() {
     // we find them in the config file. Any stores left in the old map
     // at the end will be deleted.
     std::vector<pStoreConf> store_confs;
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAin scribe_server.cpp in initialize() getAllStores()  storeconfs");
     config.getAllStores(store_confs);
     for (std::vector<pStoreConf>::iterator iter = store_confs.begin();
          iter != store_confs.end();
          ++iter) {
         pStoreConf store_conf = (*iter);
-
+        LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAin scribe_server.cpp in initialize() configure store for each storeconf ");
         bool success = configureStore(store_conf, &numstores);
 
         if (!success) {
@@ -882,6 +886,7 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
     return false;
   }
   else if (single_category) {
+	  LOG_OPER("AAAAAAAAA in scribe_server.cpp configurestoreccattegory() for category %s ", category_list[0].c_str());
     // configure single store
     shared_ptr<StoreQueue> result =
       configureStoreCategory(store_conf, category_list[0], model);
@@ -916,6 +921,7 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
     // create a store for each category
     vector<string>::iterator iter;
     for (iter = category_list.begin(); iter < category_list.end(); iter++) {
+    	LOG_OPER("AAAAAAAAA creating for each category in scribe_server.cpp configurestoreccattegory() for category %s ", category_list[0].c_str());
        shared_ptr<StoreQueue> result =
          configureStoreCategory(store_conf, *iter, model);
 
@@ -971,6 +977,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
     if (model != NULL) {
       // Create a copy of the model if we want a new thread per category
       if (newThreadPerCategory && !is_default && !is_prefix_category) {
+    	  LOG_OPER("AAAAAAAAA in scribe_server.cpp create a new storeque for category %s ", category.c_str());
         pstore = shared_ptr<StoreQueue>(new StoreQueue(model, category));
       } else {
         pstore = model;
@@ -995,6 +1002,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
       // Determine if this store is just a model for later stores
       is_model = newThreadPerCategory && categories;
 
+      LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAA in scribe_server.cpp in configureStoreCategory() create a new store queue with type -- %s , store_name -- %s ", type.c_str(), store_name.c_str());
       pstore =
         shared_ptr<StoreQueue>(new StoreQueue(type, store_name, checkPeriod,
                                               is_model, multi_category));
@@ -1012,8 +1020,10 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
 
   // open store. and configure it if not copied from a model
   if (model == NULL) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAA in scribe_server.cpp in configureStoreCategory()  calling configureAndOpen()  configure the store and open the store ");
     pstore->configureAndOpen(store_conf);
   } else if (!already_created) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAA in scribe_server.cpp in configureStoreCategory() store is already configured..open the store directly");
     pstore->open();
   }
 

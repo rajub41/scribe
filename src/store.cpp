@@ -250,7 +250,6 @@ FileStoreBase::~FileStoreBase() {
 
 void FileStoreBase::configure(pStoreConf configuration, pStoreConf parent) {
   Store::configure(configuration, parent);
-  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in configure(): fileStoreBase baseFilePath %s ---- subDirectory %s -----tmp  %s", baseFilePath, subDirectory, tmp);
 
   // We can run using defaults for all of these, but there are
   // a couple of suspicious things we warn about.
@@ -258,6 +257,7 @@ void FileStoreBase::configure(pStoreConf configuration, pStoreConf parent) {
   configuration->getString("file_path", baseFilePath);
   configuration->getString("sub_directory", subDirectory);
   configuration->getString("use_hostname_sub_directory", tmp);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in configure(): fileStoreBase baseFilePath %s ---- subDirectory %s -----tmp  %s", baseFilePath.c_str(), subDirectory.c_str(), tmp.c_str());
 
   if (0 == tmp.compare("yes")) {
     setHostNameSubDir();
@@ -267,7 +267,7 @@ void FileStoreBase::configure(pStoreConf configuration, pStoreConf parent) {
   if (!subDirectory.empty()) {
     filePath += "/" + subDirectory;
   }
-  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in configure() : fileStoreBase filePath %s----- baseFileName %s ", filePath, baseFileName);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in configure() : fileStoreBase filePath %s----- baseFileName %s ", filePath.c_str(), baseFileName.c_str());
 
   if (!configuration->getString("base_filename", baseFileName)) {
     LOG_OPER(
@@ -472,7 +472,7 @@ string FileStoreBase::makeFullFilename(int suffix, struct tm* creation_time,
   }
   filename << makeBaseFilename(creation_time);
   filename << '_' << setw(5) << setfill('0') << suffix;
-  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in makeFullFileName(): fileStoreBase  fullFileName %s ", fileName.str());
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in makeFullFileName(): fileStoreBase  fullFileName");
   return filename.str();
 }
 
@@ -510,7 +510,6 @@ string FileStoreBase::makeBaseFilename(struct tm* creation_time) {
     }
 
   }
-  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in makeBaseFileName() : fileStoreBase baseFileName %s ", filename.str());
   return filename.str();
 }
 
@@ -742,7 +741,7 @@ bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
     }
 
     string file = makeFullFilename(suffix, current_time);
-    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() fullFileName %s ", file);
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() fullFileName %s ", file.c_str());
 
     switch (rollPeriod) {
       case ROLL_DAILY:
@@ -760,14 +759,14 @@ bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
 
     if (writeFile) {
       if (writeMeta) {
-    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() write meta data %s  ", meta_logfile_prefix+file);
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() write meta data ");
         writeFile->write(meta_logfile_prefix + file);
       }
       LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() calling closeWriteFile() ");
       closeWriteFile();
     }
 
-    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() create a fileInterface for file %s ", file );
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal() create a fileInterface for file %s ", file.c_str() );
     writeFile = FileInterface::createFileInterface(fsType, file, isBufferFile);
     if (!writeFile) {
       LOG_OPER("[%s] Failed to create file <%s> of type <%s> for writing",
@@ -775,7 +774,7 @@ bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
       setStatus("file open error");
       return false;
     }
-    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal()  createDirectory()  filePath--%s ", baseFilePath);
+    LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in openInternal()  createDirectory()  filePath--%s ", baseFilePath.c_str());
     success = writeFile->createDirectory(baseFilePath);
 
     // If we created a subdirectory, we need to create two directories
@@ -1067,8 +1066,9 @@ void FileStore::deleteOldest(struct tm* now) {
 // Replace the messages in the oldest file at this timestamp with the input messages
 bool FileStore::replaceOldest(boost::shared_ptr<logentry_vector_t> messages,
                               struct tm* now) {
-	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest()  --baseName %s ", base_name);
+
   string base_name = makeBaseFilename(now);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest()  --baseName %s ", base_name.c_str());
   int index = findOldestFile(base_name);
   if (index < 0) {
     LOG_OPER("[%s] Could not find files <%s>", categoryHandled.c_str(), base_name.c_str());
@@ -1076,7 +1076,7 @@ bool FileStore::replaceOldest(boost::shared_ptr<logentry_vector_t> messages,
   }
 
   string filename = makeFullFilename(index, now);
-  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest() fileName -- %s", filename);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest() fileName -- %s", filename.c_str());
   LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in replaceOldest() calling close() ");
   // Need to close and reopen store in case we already have this file open
   close();
@@ -1117,7 +1117,7 @@ bool FileStore::readOldest(/*out*/ boost::shared_ptr<logentry_vector_t> messages
     return true;
   }
   std::string filename = makeFullFilename(index, now);
-  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in readOldest() fileName --%s ", filename);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in readOldest() fileName --%s ", filename.c_str());
   shared_ptr<FileInterface> infile = FileInterface::createFileInterface(fsType,
                                               filename, isBufferFile);
 
@@ -1171,7 +1171,7 @@ bool FileStore::empty(struct tm* now) {
   std::vector<std::string> files = FileInterface::list(filePath, fsType);
   LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in empty()");
   std::string base_filename = makeBaseFilename(now);
-  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in empty() baseFileName -- %s ", base_filename);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in FileStore() in empty() baseFileName -- %s ", base_filename.c_str());
   for (std::vector<std::string>::iterator iter = files.begin();
        iter != files.end();
        ++iter) {
@@ -1507,7 +1507,7 @@ void BufferStore::configure(pStoreConf configuration, pStoreConf parent) {
       setStatus(msg);
       cout << msg << endl;
     } else {
-    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create secondary store category -- %s ", categoryHandled);
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create secondary store category -- %s ", categoryHandled.c_str());
       // If replayBuffer is true, then we need to create a readable store
       secondaryStore = createStore(storeQueue, type, categoryHandled,
                                    replayBuffer, multiCategory);
@@ -1550,12 +1550,12 @@ void BufferStore::configure(pStoreConf configuration, pStoreConf parent) {
   // If the config is bad we'll still try to write the data to a
   // default location on local disk.
   if (!secondaryStore) {
-	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create secondary store  type file category--%s ", categoryHandled);
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create secondary store  type file category--%s ", categoryHandled.c_str());
     secondaryStore = createStore(storeQueue, "file", categoryHandled, true,
                                 multiCategory);
   }
   if (!primaryStore) {
-	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create primary store  type file category--%s ", categoryHandled);
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in configure() create primary store  type file category--%s ", categoryHandled.c_str());
     primaryStore = createStore(storeQueue, "file", categoryHandled, false,
                                multiCategory);
   }
@@ -1570,13 +1570,13 @@ bool BufferStore::open() {
   // try to open the primary store, and set the state accordingly
   if (primaryStore->open()) {
 	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open()  primary store is opened");
-	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open() change state to sending buffer );
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open() change state to sending buffer" );
     // in case there are files left over from a previous instance
     changeState(SENDING_BUFFER);
 
     // If we don't need to send buffers, skip to streaming
     if (!replayBuffer) {
-    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open() change state to streaming );
+    	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in open() change state to streaming ");
       // We still switch state to SENDING_BUFFER first just to make sure we
       // can open the secondary store
       changeState(STREAMING);
@@ -1931,7 +1931,7 @@ std::string BufferStore::getStatus() {
   if (return_status.empty()) {
     return_status = primaryStore->getStatus();
   }
-	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() returning status as %s ", return_status);
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAA in Store in BufferStore() in periodicCheck() returning status as %s ", return_status.c_str());
 
   return return_status;
 }

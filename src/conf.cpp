@@ -36,6 +36,8 @@ StoreConf::~StoreConf() {
 }
 
 bool StoreConf::getStore(const string& storeName, pStoreConf& _return) {
+	cout<< "sssssssssssssssssssssstore "<< storeName ;
+	//LOG_OPER("AAAAAAAAAAAAAAAAAAAAAA in conf.cpp in getStore()  getting the store for store name -- %s ", *(storeName));
   store_conf_map_t::iterator iter = stores.find(storeName);
   if (iter != stores.end()) {
     _return = iter->second;
@@ -51,6 +53,7 @@ void StoreConf::setParent(pStoreConf pParent) {
 
 void StoreConf::getAllStores(vector<pStoreConf>& _return) {
   for (store_conf_map_t::iterator iter = stores.begin(); iter != stores.end(); ++iter) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAA in conf.cpp in getAllStores() for each store  %s ", (iter->first).c_str());
     _return.push_back(iter->second);
   }
 }
@@ -106,13 +109,15 @@ bool StoreConf::getString(const string& stringName,
   // we are looking for $type::$stringName where $type is the store type.
   // check the current store conf
 
+
   // first check the current store
   string_map_t::const_iterator iter = values.find(stringName);
+//  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAA in conf.cpp in getString() getting the string for -- %s --- is -- %s  ", (stringName), ((iter->second)).c_str());
   if (iter != values.end()) {
     _return = iter->second;
     return true;
   }
-
+  cout<<"AAAAAAAAAAAAAAAAAAAAAAAAAAAAa in conf.cpp in getString()  values map "<< stringName << "  ---- " << _return;
   // "category", "categories", "type" parameters can't be inherited
   string_map_t::const_iterator typeIter = values.find("type");
   string storeType = typeIter == values.end() ? "" : typeIter->second;
@@ -126,6 +131,7 @@ bool StoreConf::getString(const string& stringName,
   // not found
   bool found = false;
   string inheritedName = storeType + "::" + stringName;
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAA in conf.cpp in getString()  inheritedname -- %s", inheritedName.c_str());
   // searching for type::stringName start with the current configuration
   // this allows a parameter to be used by the current configuration
   // and descendant stores. E.g.
@@ -172,7 +178,7 @@ void StoreConf::setUnsignedLongLong(const string& stringName, unsigned long long
 void StoreConf::parseConfig(const string& filename) {
 
   queue<string> config_strings;
-
+LOG_OPER("AAAAAAAAAAAAAAAA in conf.cpp  in parseConfig() ");
   if (readConfFile(filename, config_strings)) {
     LOG_OPER("got configuration data from file <%s>", filename.c_str());
   } else {
@@ -190,7 +196,7 @@ void StoreConf::parseConfig(const string& filename) {
 bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_config) {
 
   int store_index = 0; // used to give things named "store" different names
-
+  LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in parseStore() ");
   string line;
   while (!raw_config.empty()) {
 
@@ -224,7 +230,7 @@ bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_
         continue;
       }
       string store_name = line.substr(1, pos - 1);
-
+      LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in parseStore() storeName %s ", store_name.c_str());
       pStoreConf new_store(new StoreConf);
       if (parseStore(raw_config, new_store.get())) {
         if (0 == store_name.compare("store")) {
@@ -233,11 +239,13 @@ bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_
           ostringstream oss;
           oss << store_index;
           store_name += oss.str();
+          LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in parseStore() storeName %s  inc ", store_name.c_str());
           ++store_index;
         }
         if (parsed_config->stores.find(store_name) != parsed_config->stores.end()) {
           LOG_OPER("Bad config - duplicate store name %s", store_name.c_str());
         }
+        LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in parseStore() storeName %s assigning new store to parsed config(storeConf)", store_name.c_str());
         parsed_config->stores[store_name] = new_store;
       }
     } else {
@@ -255,6 +263,7 @@ bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_
         if (parsed_config->values.find(arg) != parsed_config->values.end()) {
           LOG_OPER("Bad config - duplicate key %s", arg.c_str());
         }
+        LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in parseStore()  assiging values to parsed_config key %s  value %s ", arg.c_str(), val.c_str());
         parsed_config->values[arg] = val;
       }
     }
@@ -280,16 +289,17 @@ string StoreConf::trimString(const string& str) {
 bool StoreConf::readConfFile(const string& filename, queue<string>& _return) {
   string line;
   ifstream config_file;
-
+LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in readConfFile()  ");
   config_file.open(filename.c_str());
   if (!config_file.good()) {
     return false;
   }
 
   while (getline(config_file, line)) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in readConfFile()  line %s ", line.c_str());
     _return.push(line);
   }
-
+  LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in readConfFile()  calling close on config file ");
   config_file.close();
   return true;
 }

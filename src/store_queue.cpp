@@ -50,7 +50,7 @@ StoreQueue::StoreQueue(const string& type, const string& category,
     maxWriteInterval(DEFAULT_MAX_WRITE_INTERVAL),
     mustSucceed(true),
     isAudit(false) {
-LOG_OPER("AAAAAAAAAAAAAAAAAAAAAA in storeQueue() constructor %s ", category);
+LOG_OPER("AAAAAAAAAAAAAAAAAAAAAA in storeQueue() constructor %s ", category.c_str());
   store = Store::createStore(this, type, category,
                             false, multiCategory);
   if (!store) {
@@ -73,12 +73,12 @@ StoreQueue::StoreQueue(const boost::shared_ptr<StoreQueue> example,
     maxWriteInterval(example->maxWriteInterval),
     mustSucceed(example->mustSucceed),
     isAudit(false) {
-	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAA in storeQueue() constructor %s   example ", category);
+	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAA in storeQueue() constructor %s   example ", category.c_str());
   store = example->copyStore(category);
   if (!store) {
     throw std::runtime_error("createStore failed copying model store");
   }
-  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa in storeQueue() calling storeInitCommon()");
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAa in storeQueue() calling storeInitCommon()     from example ");
   storeInitCommon();
 }
 
