@@ -48,16 +48,24 @@ bool StoreConf::getStore(const string& storeName, pStoreConf& _return) {
 }
 
 void StoreConf::copyStoreConf(pStoreConf storeConf) {
-string_map_t storeValues = (*storeConf).getValues();//storeConf->getvalues();
- for (string_map_t::iterator iter = storeValues.begin(); iter != storeValues.end(); ++iter) {
-   LOG_OPER("ccccccccccccccccc copying the values");
-   this->values[iter->first] = iter->second;
- }
- this->setParent((*storeConf).getParent());
-store_conf_map_t unknownStoresMap = storeConf->getStoreMap();
- for (store_conf_map_t::iterator iter = unknownStoresMap.begin(); iter != unknownStoresMap.end(); ++iter) {
-LOG_OPER("cccccccccccccccccc assigning the stores in store conf");
- }
+	LOG_OPER("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU copying ");
+	 storeConf->getValues();
+	 LOG_OPER("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU getvalues ");
+	//string_map_t storeValues = storeConf->getValues();//storeConf->getvalues();
+	LOG_OPER("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU values in storeconf");
+	for (string_map_t::iterator iter = storeConf->getValues().begin(); iter != storeConf->getValues().end(); ++iter) {
+		LOG_OPER("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU copying the values");
+		this->values[iter->first] = iter->second;
+	}
+	LOG_OPER("UUUUUUUUUUUUUUUUUUU copied all values");
+	this->setParent((*storeConf).getParent());
+	LOG_OPER("UUUUUUUUUUUUUUUUU copied parent ");
+	store_conf_map_t unknownStoresMap = storeConf->getStoreMap();
+	LOG_OPER("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU assign unknownStoreCOnf stores map");
+	for (store_conf_map_t::iterator iter = unknownStoresMap.begin(); iter != unknownStoresMap.end(); ++iter) {
+
+		LOG_OPER("cccccccccccccccccc assigning the stores in store conf");
+	}
 }
 string_map_t StoreConf::getValues() {
 	return values;
@@ -143,7 +151,7 @@ bool StoreConf::getString(const string& stringName,
     _return = iter->second;
     return true;
   }
-  cout<<"AAAAAAAAAAAAAAAAAAAAAAAAAAAAa in conf.cpp in getString()  values map "<< stringName << "  ---- " << _return;
+  cout<<"AAAAAAAAAAAAAAAAAAAAAAAAAAAAa in conf.cpp in getString()  values map "<< stringName << "  ---- " << _return << endl;
   // "category", "categories", "type" parameters can't be inherited
   string_map_t::const_iterator typeIter = values.find("type");
   string storeType = typeIter == values.end() ? "" : typeIter->second;
@@ -189,7 +197,7 @@ void StoreConf::setString(const string& stringName, const string& value) {
 }
 
 void StoreConf::setUnknownStoreConf(pStoreConf storeConf) {
-	unknownStoreConf = storeConf;
+	unknownStoreConf= storeConf;
 }
 
 void StoreConf::setUnsigned(const string& stringName, unsigned long value) {
@@ -279,10 +287,13 @@ bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_
         // get the category ... if unknown set unknown
         string temp;
         parsed_config->getString("category", temp);
+        cout<<"TTTTTTTTTT   temp "<< temp << endl;
         if (0 == temp.compare("unknown")) {
+        	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA unknown category ");
            parsed_config->setUnknownStoreConf(new_store);
         } else {
-        parsed_config->stores[store_name] = new_store;
+        	LOG_OPER("AAAAAAAAAAAAAA setting other stores  %s", temp.c_str());
+            parsed_config->stores[store_name] = new_store;
         }
       }
     } else {

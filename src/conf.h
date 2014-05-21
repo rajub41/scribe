@@ -68,12 +68,14 @@ class StoreConf {
   string_map_t getValues();
   store_conf_map_t getStoreMap();
   pStoreConf getParent();
+
  private:
   string_map_t values;
   store_conf_map_t stores;
   pStoreConf parent;
-  // pstoreconf unknown
   pStoreConf unknownStoreConf;
+  // pstoreconf unknown
+  //pStoreConf unknownStoreConf;
   //getUnknown();
   static bool parseStore(/*in,out*/ std::queue<std::string>& raw_config,
                          /*out*/ StoreConf* parsed_config);

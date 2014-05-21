@@ -476,6 +476,7 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
           category.c_str());
     }
   }
+  LOG_OPER("UUUUUUUUUUUUUUUUUUUUUUUUUUknown behavior started  ");
 
   // create a new store for the non white-listed category
 // clone store conf
@@ -483,9 +484,17 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
   // new storewueue(tyepe from ) using  configureStoreCategory()
 
   pStoreConf storeConf = boost::shared_ptr<StoreConf>(new StoreConf());
-  storeConf->copyStoreConf(config.getUnknownStoreConf());
+  pStoreConf unknownStore = config.getUnknownStoreConf();
+  LOG_OPER("UUUUUUUUUUUUUnknown store got unknown store  and copy ");
+  string unk;
+  unknownStore->getString("category",unk);
+  cout<< "UUUUUUUUUUUUUUUUUUUUUUU category "<<unk<<endl;
+  storeConf->copyStoreConf(unknownStore);
+  shared_ptr<StoreQueue> model;
+  storeConf->setString("category", category);
 
-  storeConf->values["category"]=category;
+  configureStoreCategory(storeConf, category, model);
+  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA-------------------------------------- ");
   return store_list;
 }
 
