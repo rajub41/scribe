@@ -62,10 +62,19 @@ class StoreConf {
   // Reads configuration from a file and throws an exception if it fails.
   void parseConfig(const std::string& filename);
   void setParent(pStoreConf parent);
+  void setUnknownStoreConf(pStoreConf unknownStoreConf);
+  pStoreConf getUnknownStoreConf();
+  void copyStoreConf(pStoreConf unknownStoreConf);
+  string_map_t getValues();
+  store_conf_map_t getStoreMap();
+  pStoreConf getParent();
  private:
   string_map_t values;
   store_conf_map_t stores;
   pStoreConf parent;
+  // pstoreconf unknown
+  pStoreConf unknownStoreConf;
+  //getUnknown();
   static bool parseStore(/*in,out*/ std::queue<std::string>& raw_config,
                          /*out*/ StoreConf* parsed_config);
   static std::string trimString(const std::string& str);

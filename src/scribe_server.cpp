@@ -478,7 +478,14 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
   }
 
   // create a new store for the non white-listed category
+// clone store conf
+  // replace category and modify filePath and basefilename spooling path
+  // new storewueue(tyepe from ) using  configureStoreCategory()
 
+  pStoreConf storeConf = boost::shared_ptr<StoreConf>(new StoreConf());
+  storeConf->copyStoreConf(config.getUnknownStoreConf());
+
+  storeConf->values["category"]=category;
   return store_list;
 }
 

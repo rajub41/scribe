@@ -47,6 +47,28 @@ bool StoreConf::getStore(const string& storeName, pStoreConf& _return) {
   }
 }
 
+void StoreConf::copyStoreConf(pStoreConf storeConf) {
+string_map_t storeValues = (*storeConf).getValues();//storeConf->getvalues();
+ for (string_map_t::iterator iter = storeValues.begin(); iter != storeValues.end(); ++iter) {
+   LOG_OPER("ccccccccccccccccc copying the values");
+   this->values[iter->first] = iter->second;
+ }
+ this->setParent((*storeConf).getParent());
+store_conf_map_t unknownStoresMap = storeConf->getStoreMap();
+ for (store_conf_map_t::iterator iter = unknownStoresMap.begin(); iter != unknownStoresMap.end(); ++iter) {
+LOG_OPER("cccccccccccccccccc assigning the stores in store conf");
+ }
+}
+string_map_t StoreConf::getValues() {
+	return values;
+}
+
+store_conf_map_t StoreConf::getStoreMap() {
+	return stores;
+}
+pStoreConf StoreConf::getParent() {
+	return parent;
+}
 void StoreConf::setParent(pStoreConf pParent) {
   parent = pParent;
 }
@@ -98,6 +120,10 @@ bool StoreConf::getUnsignedLongLong(const string& llName,
   } else {
     return false;
   }
+}
+
+pStoreConf StoreConf::getUnknownStoreConf() {
+	return unknownStoreConf;
 }
 
 bool StoreConf::getString(const string& stringName,
@@ -160,6 +186,10 @@ bool StoreConf::getString(const string& stringName,
 
 void StoreConf::setString(const string& stringName, const string& value) {
   values[stringName] = value;
+}
+
+void StoreConf::setUnknownStoreConf(pStoreConf storeConf) {
+	unknownStoreConf = storeConf;
 }
 
 void StoreConf::setUnsigned(const string& stringName, unsigned long value) {
@@ -246,7 +276,14 @@ bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_
           LOG_OPER("Bad config - duplicate store name %s", store_name.c_str());
         }
         LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in parseStore() storeName %s assigning new store to parsed config(storeConf)", store_name.c_str());
+        // get the category ... if unknown set unknown
+        string temp;
+        parsed_config->getString("category", temp);
+        if (0 == temp.compare("unknown")) {
+           parsed_config->setUnknownStoreConf(new_store);
+        } else {
         parsed_config->stores[store_name] = new_store;
+        }
       }
     } else {
       string::size_type eq = line.find('=');
