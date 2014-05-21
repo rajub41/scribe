@@ -486,9 +486,12 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
   pStoreConf storeConf = boost::shared_ptr<StoreConf>(new StoreConf());
   pStoreConf unknownStore = config.getUnknownStoreConf();
   LOG_OPER("UUUUUUUUUUUUUnknown store got unknown store  and copy ");
+  cout<<"UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU config "<< config << endl;
+
   string unk;
   unknownStore->getString("category",unk);
-  cout<< "UUUUUUUUUUUUUUUUUUUUUUU category "<<unk<<endl;
+  cout<< "UUUUUUUUUUUUUUUUUUUUUUU category unk ";
+  cout<< "UUUUUUUUUUUUUUUUUUUUUUU category unk " << unk << endl;
   storeConf->copyStoreConf(unknownStore);
   shared_ptr<StoreQueue> model;
   storeConf->setString("category", category);
@@ -1017,11 +1020,14 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
 
       // Determine if this store is just a model for later stores
       is_model = newThreadPerCategory && categories;
-
+      if (store_name.compare("unknown") == 0) {
+    	  LOG_OPER("SSSSSSSSSSSSSSSSSSSSSSSSSKipppppppppppppppp ");
+      } else {
       LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAA in scribe_server.cpp in configureStoreCategory() create a new store queue with type -- %s , store_name -- %s ", type.c_str(), store_name.c_str());
       pstore =
         shared_ptr<StoreQueue>(new StoreQueue(type, store_name, checkPeriod,
                                               is_model, multi_category));
+      }
     }
   } catch (...) {
     pstore.reset();

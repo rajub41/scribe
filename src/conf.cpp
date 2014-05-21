@@ -285,19 +285,33 @@ bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_
         }
         LOG_OPER("AAAAAAAAAAAAAAAAA in conf.cpp in parseStore() storeName %s assigning new store to parsed config(storeConf)", store_name.c_str());
         // get the category ... if unknown set unknown
-        string temp;
+        /*string temp;
         parsed_config->getString("category", temp);
-        cout<<"TTTTTTTTTT   temp "<< temp << endl;
-        if (0 == temp.compare("unknown")) {
+        cout<<"TTTTTTTTTT   temp "<< temp << endl;*/
+        /*if (0 == temp.compare("unknown")) {
         	LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA unknown category ");
+
            parsed_config->setUnknownStoreConf(new_store);
-        } else {
-        	LOG_OPER("AAAAAAAAAAAAAA setting other stores  %s", temp.c_str());
-            parsed_config->stores[store_name] = new_store;
-        }
+           cout<<"PPPPPPPPPPPPPPPPPPPPPPPPPPP parsedConfig-- unknown  "<<new_store<<endl;
+           cout<<"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG --unknown "<<parsed_config->getUnknownStoreConf()<<endl;
+        } else {*/
+        	//LOG_OPER("AAAAAAAAAAAAAA setting other stores  %s", temp.c_str());
+        	parsed_config->stores[store_name] = new_store;
+        	cout<<"PPPPPPPPPPPPPPPPPPPPPPPPPPP parsedConfig "<<parsed_config<<endl;
+      //  }
+      }
+      string temp;
+      parsed_config->getString("category", temp);
+      cout<<"TTTTTTTTTT   temp "<< temp << endl;
+      if (0 == temp.compare("unknown")) {
+    	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA unknown category ");
+
+    	  parsed_config->setUnknownStoreConf(new_store);
+    	  cout<<"PPPPPPPPPPPPPPPPPPPPPPPPPPP parsedConfig-- unknown  "<<new_store<<endl;
+    	  cout<<"GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG --unknown "<<parsed_config->getUnknownStoreConf()<<endl;
       }
     } else {
-      string::size_type eq = line.find('=');
+    	string::size_type eq = line.find('=');
       if (eq == string::npos) {
         LOG_OPER("Bad config - line %s is missing an =", line.c_str());
       } else {
