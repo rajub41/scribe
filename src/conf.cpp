@@ -58,14 +58,17 @@ void StoreConf::copyStoreConf(pStoreConf storeConf) {
 		this->values[iter->first] = iter->second;
 	}
 	LOG_OPER("UUUUUUUUUUUUUUUUUUU copied all values");
+	//cout<<"VVVVVVVVVVVVVVVVVVVVVVVVVV values "<<this->values<<endl;
 	this->setParent((*storeConf).getParent());
 	LOG_OPER("UUUUUUUUUUUUUUUUU copied parent ");
 	store_conf_map_t unknownStoresMap = storeConf->getStoreMap();
 	LOG_OPER("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU assign unknownStoreCOnf stores map");
 	for (store_conf_map_t::iterator iter = unknownStoresMap.begin(); iter != unknownStoresMap.end(); ++iter) {
 
+		this->stores[iter->first]=iter->second;
 		LOG_OPER("cccccccccccccccccc assigning the stores in store conf");
 	}
+	//cout<<"VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV stores "<<this->stores<<endl;
 }
 string_map_t StoreConf::getValues() {
 	return values;
@@ -301,7 +304,7 @@ bool StoreConf::parseStore(queue<string>& raw_config, /*out*/ StoreConf* parsed_
       //  }
       }
       string temp;
-      parsed_config->getString("category", temp);
+      new_store->getString("category", temp);
       cout<<"TTTTTTTTTT   temp "<< temp << endl;
       if (0 == temp.compare("unknown")) {
     	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA unknown category ");

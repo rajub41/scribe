@@ -485,13 +485,13 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
 
   pStoreConf storeConf = boost::shared_ptr<StoreConf>(new StoreConf());
   pStoreConf unknownStore = config.getUnknownStoreConf();
-  LOG_OPER("UUUUUUUUUUUUUnknown store got unknown store  and copy ");
+  /*LOG_OPER("UUUUUUUUUUUUUnknown store got unknown store  and copy ");
   cout<<"UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU config "<< config << endl;
 
   string unk;
   unknownStore->getString("category",unk);
   cout<< "UUUUUUUUUUUUUUUUUUUUUUU category unk ";
-  cout<< "UUUUUUUUUUUUUUUUUUUUUUU category unk " << unk << endl;
+  cout<< "UUUUUUUUUUUUUUUUUUUUUUU category unk " << unk << endl;*/
   storeConf->copyStoreConf(unknownStore);
   shared_ptr<StoreQueue> model;
   storeConf->setString("category", category);
