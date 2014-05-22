@@ -94,6 +94,8 @@ class scribeHandler : virtual public scribe::thrift::scribeIf,
 
   // the default stores
   store_list_t defaultStores;
+  // the non-white-listed stores
+  store_list_t nonWhiteListedStores;
 
   std::string configFilename;
   facebook::fb303::fb_status status;

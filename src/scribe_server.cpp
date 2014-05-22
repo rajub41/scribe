@@ -455,6 +455,20 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
     cat_prefix_iter++;
   }
 
+  // try creating a store if we have unknown store is specified
+  if (store_list == NULL && !nonWhiteListedStores.empty()) {
+    for (store_list_t::iterator store_iter = nonWhiteListedStores.begin();
+        store_iter != nonWhiteListedStores.end(); ++store_iter) {
+      createCategoryFromModel(category, *store_iter);
+    }
+    category_map_t::iterator cat_iter = categories.find(category);
+    if (cat_iter != categories.end()) {
+      store_list = cat_iter->second;
+    } else {
+      LOG_OPER("failed to create new unknown store for category <%s>",
+          category.c_str());
+    }
+  }
 
   // Then try creating a store if we have a default store defined
   if (store_list == NULL && !defaultStores.empty()) {
@@ -629,6 +643,20 @@ void scribeHandler::stopStores() {
   // In the first phase, stop all stores other than audit store, followed by
   // stopping the audit store, if any. This is needed to ensure that all audit
   // messages created by all stores get flushed before server shutdown.
+
+
+  // stop unknown stores
+  for (store_list_t::iterator store_iter = nonWhiteListedStores.begin();
+      store_iter != nonWhiteListedStores.end(); ++store_iter) {
+    if (!(*store_iter)->isModelStore() &&
+        !(*store_iter)->isAuditStore()) {
+      const char* category = (*store_iter)->getCategoryHandled().c_str();
+      LOG_OPER("Stopping store of category [%s]", category);
+      (*store_iter)->stop();
+      LOG_OPER("Stopped store of category [%s]", category);
+    }
+  }
+
   shared_ptr<store_list_t> store_list;
   for (store_list_t::iterator store_iter = defaultStores.begin();
       store_iter != defaultStores.end(); ++store_iter) {
@@ -651,7 +679,9 @@ void scribeHandler::stopStores() {
     LOG_OPER("Stopped store of category [%s]", category);
   }
 
-  // In the second phase, clear the default store list and category maps.
+  // In the second phase, clear the unknown(non white-listed) store list,
+  // default store list and category maps.
+  nonWhiteListedStores.clear();
   defaultStores.clear();
   deleteCategoryMap(categories);
   deleteCategoryMap(category_prefixes);
@@ -833,7 +863,14 @@ void scribeHandler::configureAuditManagerInAllStores() {
          store_iter != defaultStores.end(); store_iter++) {
       (*store_iter)->setAuditManager(auditMgr);
       storeCount++;
-    }
+  }
+
+  // set audit manager to unknown stores
+  for (store_list_t::iterator store_iter = nonWhiteListedStores.begin();
+      store_iter != nonWhiteListedStores.end(); store_iter++) {
+    (*store_iter)->setAuditManager(auditMgr);
+    storeCount++;
+  }
 
   LOG_OPER("configured audit manager in <%d> stores", storeCount);
 }
@@ -930,6 +967,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
   bool category_list) {                        //is a list of stores?
 
   bool is_default = false;
+  bool is_unknown = false;
   bool already_created = false;
 
   if (category.empty()) {
@@ -938,6 +976,11 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
   }
 
   LOG_OPER("CATEGORY : %s", category.c_str());
+
+  if (0 == category.compare("unknown")) {
+    is_unknown= true;
+  }
+
   if (0 == category.compare("default")) {
     is_default = true;
   }
@@ -978,7 +1021,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
         store_name = category;
 
       // Does this store define multiple categories
-      categories = (is_default || is_prefix_category || category_list);
+      categories = (is_unknown || is_default || is_prefix_category || category_list);
 
       // Determine if this store will actually handle multiple categories
       multi_category = !newThreadPerCategory && categories;
@@ -1011,7 +1054,14 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
   if (category_list) {
     return (pstore);
   }
-  if (is_default) {
+
+  if (is_unknown) {
+    LOG_OPER("Creating unknown store");
+    // Not white listed and unknown store is specified in the scribe conf
+    nonWhiteListedStores.push_back(pstore);
+  }
+
+  if (is_default && !is_unknown) {
     LOG_OPER("Creating default store");
     defaultStores.push_back(pstore);
   } else if (is_prefix_category) {
