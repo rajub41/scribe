@@ -144,6 +144,7 @@ void StoreQueue::stop() {
     pthread_mutex_lock(&cmdMutex);
     StoreCommand cmd(CMD_STOP);
     cmdQueue.push(cmd);
+    LOG_OPER("AAA stop command is pushed to command queue and setting true stopping");
     stopping = true;
     pthread_mutex_unlock(&cmdMutex);
 
@@ -237,6 +238,7 @@ void StoreQueue::threadMember() {
         open = true;
         break;
       case CMD_STOP:
+    	  LOG_OPER("AAA stop command was coming from the queue");
         stop = true;
         break;
       default:
@@ -249,6 +251,7 @@ void StoreQueue::threadMember() {
     time_t this_loop;
     time(&this_loop);
     if (!stop && ((this_loop - last_periodic_check) >= checkPeriod)) {
+    	LOG_OPER("AAAAAA should not enter here ");
       if (open) store->periodicCheck();
       last_periodic_check = this_loop;
     }
@@ -270,7 +273,7 @@ void StoreQueue::threadMember() {
     if (stop ||
         (this_loop - last_handle_messages >= maxWriteInterval) ||
         msgQueueSize >= targetWriteSize) {
-
+LOG_OPER("AAA should enter here ");
       if (failedMessages) {
         // process any messages we were not able to process last time
         messages = failedMessages;
@@ -289,14 +292,18 @@ void StoreQueue::threadMember() {
     pthread_mutex_unlock(&msgMutex);
 
     if (messages) {
+    	LOG_OPER("AAAA handle messages here ");
       if (!store->handleMessages(messages)) {
+    	  LOG_OPER("AAA process failed messages");
         // Store could not handle these messages
         processFailedMessages(messages);
       }
+      LOG_OPER("AAAA flush the store ");
       store->flush();
     }
 
     if (!stop) {
+    	LOG_OPER("should not enter here ");
       // set timeout to when we need to handle messages or do a periodic check
       abs_timeout.tv_sec = min(last_periodic_check + checkPeriod,
           last_handle_messages + maxWriteInterval);

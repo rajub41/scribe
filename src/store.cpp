@@ -803,6 +803,7 @@ bool FileStore::isOpen() {
 
 void FileStore::closeWriteFile() {
   if (writeFile) {
+	  LOG_OPER("AAA closing write file ");
     writeFile->close();
     if (writeStats && !(writeFile->isOpen()) ) {
       time_t rawtime = time(NULL);
@@ -831,6 +832,8 @@ void FileStore::closeWriteFile() {
     
     eventsWritten = 0;
     eventSize = 0;
+
+    // create an empty file
 
     // audit the file close event
     auditFileClosed();

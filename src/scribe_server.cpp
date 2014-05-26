@@ -53,6 +53,7 @@ static string log_separator = ":";
 // handler thread will check the flags in its loop and take respective action. 
 void sigact_handler(int sig, siginfo_t* siginfo, void* context) {
   if (siginfo->si_signo == SIGINT || siginfo->si_signo == SIGTERM) {
+	  LOG_OPER("AAAAAAAAAAAAA stop command is issued");
     // if signal is SIGINT or SIGTERM, set stopFlag to 1
     stopFlag = 1;
   } else if (siginfo->si_signo == SIGHUP) {
@@ -96,8 +97,10 @@ void print_usage(const char* program_name) {
 // and then it calls TNonBlockingServer::stop().
 void scribeHandler::performShutdown() {
   RWGuard monitor(*scribeHandlerLock, true);
+LOG_OPER("AAAA perform shutdown");
   stopStores();
   
+  LOG_OPER("AAAAAAA stop the scribe server ");
   // calling stop to allow thrift to clean up client states and exit
   server->stop();
   // commenting stopServer() because server->stop() will eventually
@@ -640,7 +643,9 @@ void scribeHandler::stopStores() {
       LOG_OPER("Stopped store of category [%s]", category);
     }
   }
+  LOG_OPER("AAAAA stop category map in stopstores");
   stopCategoryMap(categories);
+  LOG_OPER("AAAAA stop prefix category map in stopstores");
   stopCategoryMap(category_prefixes);
 
   // Now check if audit store is present and close it.
@@ -651,6 +656,7 @@ void scribeHandler::stopStores() {
     LOG_OPER("Stopped store of category [%s]", category);
   }
 
+  LOG_OPER("AAAAAAA clear the category maps");
   // In the second phase, clear the default store list and category maps.
   defaultStores.clear();
   deleteCategoryMap(categories);
@@ -1053,6 +1059,7 @@ void scribeHandler::stopCategoryMap(category_map_t& cats) {
   for (category_map_t::iterator cat_iter = cats.begin();
        cat_iter != cats.end();
        ++cat_iter) {
+	  LOG_OPER("AAAAAAAA stop category map for category <%s>", (cat_iter->first).c_str());
     shared_ptr<store_list_t> pstores = cat_iter->second;
     if (!pstores) {
       // log an error message to ensure graceful shutdown instead of
@@ -1085,6 +1092,7 @@ void scribeHandler::stopCategoryMap(category_map_t& cats) {
 
 // delete everything in cats
 void scribeHandler::deleteCategoryMap(category_map_t& cats) {
+	LOG_OPER("AAAAAAAAA delete categories from map");
   for (category_map_t::iterator cat_iter = cats.begin();
        cat_iter != cats.end();
        ++cat_iter) {
