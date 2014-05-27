@@ -735,7 +735,10 @@ bool FileStore::openInternal(bool incrementFilename, struct tm* current_time) {
       closeWriteFile();
     }
 
+ LOG_OPER("AAA create file <%s> of type <%s> for writing",
+               categoryHandled.c_str(), file.c_str(), fsType.c_str());
     writeFile = FileInterface::createFileInterface(fsType, file, isBufferFile);
+
     if (!writeFile) {
       LOG_OPER("[%s] Failed to create file <%s> of type <%s> for writing",
                categoryHandled.c_str(), file.c_str(), fsType.c_str());
@@ -834,7 +837,57 @@ void FileStore::closeWriteFile() {
     eventSize = 0;
 
     // create an empty file
+    if (isStorePrimary()) {
+    	bool success = false;
+    	struct tm timeinfo;
 
+    	time_t rawtime = time(NULL);
+    	localtime_r(&rawtime, &timeinfo);
+    	struct tm* current_time = &timeinfo;
+    	int suffix = findNewestFile(makeBaseFilename(current_time));
+    	++suffix;
+
+    	// this is the case where there's no file there and we're not incrementing
+    	if (suffix < 0) {
+    		suffix = 0;
+    	}
+
+    	string file = makeFullFilename(suffix, current_time);
+    	LOG_OPER("AAAFIX:   create file <%s> of type <%s> for writing",
+    			categoryHandled.c_str(), file.c_str(), fsType.c_str());
+    	writeFile = FileInterface::createFileInterface(fsType, file, isBufferFile);
+
+    	if (!writeFile) {
+    		LOG_OPER("AAA [%s]FIX Failed to create file <%s> of type <%s> for writing",
+    				categoryHandled.c_str(), file.c_str(), fsType.c_str());
+    		setStatus("file open error");
+    	} else {
+    		LOG_OPER("AAA [%s]FIX created successfully file <%s> of type <%s> for writing",
+    				categoryHandled.c_str(), file.c_str(), fsType.c_str());
+    	}
+
+    	success = writeFile->createDirectory(baseFilePath);
+    	LOG_OPER("AAA FIX successfully created dir <%s> ", baseFilePath.c_str());
+    	// If we created a subdirectory, we need to create two directories
+    	if (success && !subDirectory.empty()) {
+    		success = writeFile->createDirectory(filePath);
+    	}
+
+    	if (!success) {
+    		LOG_OPER("AAA [%s] Failed to create directory for file <%s>",
+    				categoryHandled.c_str(), file.c_str());
+    		setStatus("File open error");
+
+    	} else {
+    		LOG_OPER("AAA [%s] FIX created directory for file <%s>",
+    				categoryHandled.c_str(), file.c_str());
+    	}
+    	LOG_OPER("AAA FIX open and write the file ");
+    	writeFile->openWrite();
+    	LOG_OPER("AAA FIX close the file ");
+    	writeFile->close();
+    	LOG_OPER("AAA FIX successfully closed the file %s ", file.c_str());
+    }
     // audit the file close event
     auditFileClosed();
   }
@@ -1533,11 +1586,14 @@ bool BufferStore::open() {
 
 void BufferStore::close() {
   if (primaryStore->isOpen()) {
+
     primaryStore->flush();
+	  LOG_OPER("AAA close is called on the store ");
     primaryStore->close();
   }
   if (secondaryStore->isOpen()) {
     secondaryStore->flush();
+	  LOG_OPER("AAA close is called on the store secondary ");
     secondaryStore->close();
   }
 }

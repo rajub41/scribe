@@ -36,6 +36,7 @@ boost::shared_ptr<FileInterface> FileInterface::createFileInterface(const std::s
   if (0 == type.compare("std")) {
     return shared_ptr<FileInterface>(new StdFile(name, framed));
   } else if (0 == type.compare("hdfs")) {
+	  LOG_OPER("AAA create file interface for hdfs");
     return shared_ptr<FileInterface>(new HdfsFile(name));
   } else {
     return shared_ptr<FileInterface>();
@@ -44,6 +45,7 @@ boost::shared_ptr<FileInterface> FileInterface::createFileInterface(const std::s
 
 std::vector<std::string> FileInterface::list(const std::string& path, const std::string &fsType) {
   std::vector<std::string> files;
+  LOG_OPER("AAAAAA in list() create file interface");
   shared_ptr<FileInterface> concrete_file = createFileInterface(fsType, path);
   if (concrete_file) {
     concrete_file->listImpl(path, files);
