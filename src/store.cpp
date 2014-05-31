@@ -836,8 +836,20 @@ void FileStore::closeWriteFile() {
     eventsWritten = 0;
     eventSize = 0;
 
-    // create an empty file
     if (isStorePrimary()) {
+    	LOG_OPER("AAAAAAAAAAAAA FIX  it is in primary store ");
+    } else {
+    	LOG_OPER("AAAAAAAAAAAAA FIX  not in primary store ");
+    }
+
+    if (isStopFlagSet()) {
+    	LOG_OPER("AAAAA FIX stop flag is set to true");
+    } else {
+    	LOG_OPER("AAAAA FIX stopFloag is not set to true");
+    }
+    // create an empty file
+    if (isStorePrimary() && isStopFlagSet()) {
+    	LOG_OPER("AAA FIX creating only one empty file as it is in shutdown phase  ");
     	bool success = false;
     	struct tm timeinfo;
 

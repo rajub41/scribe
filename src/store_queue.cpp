@@ -303,7 +303,7 @@ LOG_OPER("AAA should enter here ");
     }
 
     if (!stop) {
-    	LOG_OPER("should not enter here ");
+    	//LOG_OPER("should not enter here ");
       // set timeout to when we need to handle messages or do a periodic check
       abs_timeout.tv_sec = min(last_periodic_check + checkPeriod,
           last_handle_messages + maxWriteInterval);
@@ -319,7 +319,12 @@ LOG_OPER("AAA should enter here ");
     }
 
   } // while (!stop)
-
+  LOG_OPER("AAA setting stop store flag");
+  store->setStopTrue();
+  if (store->isStopFlagSet()) {
+	  LOG_OPER("AAA stop is set to true in store ");
+  }
+  LOG_OPER("AAA closing the store ");
   store->close();
 }
 

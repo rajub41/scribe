@@ -88,6 +88,8 @@ class Store {
 
   void setStorePrimary(bool primary) { isPrimary = primary; }
   bool isStorePrimary() { return isPrimary; } 
+  void setStopTrue() { isStop = true; }
+  bool isStopFlagSet() {return isStop;}
 
  protected:
   virtual void setStatus(const std::string& new_status);
@@ -102,6 +104,7 @@ class Store {
   // Whether this is a primary store of its parent. This flag is used to decide 
   // whether to audit the sent messages.
   bool isPrimary;
+  bool isStop;
 
   // Don't ever take this lock for multiple stores at the same time
   pthread_mutex_t statusMutex;
