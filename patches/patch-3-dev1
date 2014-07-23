@@ -1,0 +1,197 @@
+commit 61f82e60f2bd4ce71e11be2cc385c13f0607ddf1
+Author: raju <raju@databusdev1.mkhoj.com>
+Date:   Wed Jul 23 09:04:33 2014 +0000
+
+    fix thread-name function calls
+
+diff --git a/src/scribe_server.cpp b/src/scribe_server.cpp
+index 0b9f7b2..959f96e 100644
+--- a/src/scribe_server.cpp
++++ b/src/scribe_server.cpp
+@@ -330,7 +330,7 @@ const char* scribeHandler::statusAsString(fb_status status) {
+ 
+ // Should be called while holding a writeLock on scribeHandlerLock
+ bool scribeHandler::createCategoryFromModel(
+-  const string &category, const boost::shared_ptr<StoreQueue> &model) {
++  const string &category, const boost::shared_ptr<StoreQueue> &model, string&  thread_name) {
+ 
+   // Make sure the category name is sane.
+   try {
+@@ -349,7 +349,7 @@ bool scribeHandler::createCategoryFromModel(
+   shared_ptr<StoreQueue> pstore;
+   if (newThreadPerCategory) {
+     // Create a new thread/StoreQueue for this category
+-    pstore = shared_ptr<StoreQueue>(new StoreQueue(model, category));
++    pstore = shared_ptr<StoreQueue>(new StoreQueue(model, category, thread_name));
+     LOG_OPER("[%s] Creating new category store from model %s",
+              category.c_str(), model->getCategoryHandled().c_str());
+ 
+@@ -439,7 +439,11 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
+       shared_ptr<store_list_t> pstores = cat_prefix_iter->second;
+       for (store_list_t::iterator store_iter = pstores->begin();
+           store_iter != pstores->end(); ++store_iter) {
+-        createCategoryFromModel(category, *store_iter);
++        // TODDDDOOOOOOOOOOOOOOOOOOOOOOOOOOO
++                ostringstream ostr;
++                        ostr << "";
++                        std::string thread_name = ostr.str();
++        createCategoryFromModel(category, *store_iter, thread_name);
+       }
+       category_map_t::iterator cat_iter = categories.find(category);
+ 
+@@ -460,7 +464,11 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
+   if (store_list == NULL && !defaultStores.empty()) {
+     for (store_list_t::iterator store_iter = defaultStores.begin();
+         store_iter != defaultStores.end(); ++store_iter) {
+-      createCategoryFromModel(category, *store_iter);
++      // TODDDDOOOOOOOOOOOOOOOOOOOOOOOOOOO
++                ostringstream ostr;
++                        ostr << "";
++                        std::string thread_name = ostr.str();
++      createCategoryFromModel(category, *store_iter, thread_name);
+     }
+     category_map_t::iterator cat_iter = categories.find(category);
+     if (cat_iter != categories.end()) {
+@@ -876,22 +884,26 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
+     // configure single store
+ 	  // TODO  create multiple store queues
+ 	  //long int num_store_threads;
+-	  store_conf.getInt("num_store_threads", num_store_threads);
++	  store_conf->getUnsigned("num_store_threads", num_store_threads);
+         if (!num_store_threads || num_store_threads <= 0) {
+         	LOG_OPER("AAAAAAAAAAA num thread are zero");
++               // TODDDDOOOOOOOOOOOOOOOOOOOOOOOOOOO
++                ostringstream ostr;
++                        ostr << "";
++                        std::string thread_name = ostr.str();
+         	shared_ptr<StoreQueue> result =
+-        			configureStoreCategory(store_conf, category_list[0], "", model);
++        			configureStoreCategory(store_conf, category_list[0], model, thread_name);
+         	if (result == NULL) {
+         		return false;
+         	}
+         } else {
+         	for (std::size_t i = 0; i < num_store_threads; i++) {
+-        		std::ostringstream ostr;
++        		ostringstream ostr;
+         		ostr << "thread-" << i;
+-        		std::string thread_name = ostr.string();
++        		std::string thread_name = ostr.str();
+                 LOG_OPER("AAAAAAAAAAAAAAA thread name [%s]  ", thread_name.c_str());
+         		shared_ptr<StoreQueue> result =
+-        				configureStoreCategory(store_conf, category_list[0], thread_name, model);
++        				configureStoreCategory(store_conf, category_list[0], model, thread_name);
+         		if (result == NULL) {
+         			return false;
+         		}
+@@ -916,8 +928,13 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
+       return false;
+     }
+ 
++// TODDDDOOOOOOOOOOOOOOOOOOOOOOOOOOO
++                ostringstream ostr;
++                        ostr << "";
++                        std::string thread_name = ostr.str();
++
+     // create model so that we can create stores as copies of this model
+-    model = configureStoreCategory(store_conf, categories, model, true);
++    model = configureStoreCategory(store_conf, categories, model, thread_name, true);
+ 
+     if (model == NULL) {
+       string errormsg("Bad config - could not create store for category: ");
+@@ -930,7 +947,7 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
+     vector<string>::iterator iter;
+     for (iter = category_list.begin(); iter < category_list.end(); iter++) {
+        shared_ptr<StoreQueue> result =
+-         configureStoreCategory(store_conf, *iter, model);
++         configureStoreCategory(store_conf, *iter, model, thread_name);
+ 
+       if (!result) {
+         return false;
+@@ -949,7 +966,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
+   pStoreConf store_conf,                       //configuration for store
+   const string &category,                      //category name
+   const boost::shared_ptr<StoreQueue> &model,  //model to use (optional)
+-  string &thread_name,                         // store thread name
++   string &thread_name,                         // store thread name
+   bool category_list) {                        //is a list of stores?
+ 
+   bool is_default = false;
+@@ -985,7 +1002,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
+     if (model != NULL) {
+       // Create a copy of the model if we want a new thread per category
+       if (newThreadPerCategory && !is_default && !is_prefix_category) {
+-        pstore = shared_ptr<StoreQueue>(new StoreQueue(model, category));
++        pstore = shared_ptr<StoreQueue>(new StoreQueue(model, category, thread_name));
+       } else {
+         pstore = model;
+         already_created = true;
+@@ -1010,8 +1027,8 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
+       is_model = newThreadPerCategory && categories;
+ 
+       pstore =
+-    		  shared_ptr<StoreQueue>(new StoreQueue(type, store_name, checkPeriod,
+-    				  thread_name, is_model, multi_category));
++    		  shared_ptr<StoreQueue>(new StoreQueue(type, store_name, thread_name, checkPeriod,
++    				   is_model, multi_category));
+     }
+   } catch (...) {
+     pstore.reset();
+diff --git a/src/scribe_server.h b/src/scribe_server.h
+index d6f870d..f7a6a66 100644
+--- a/src/scribe_server.h
++++ b/src/scribe_server.h
+@@ -130,13 +130,14 @@ class scribeHandler : virtual public scribe::thrift::scribeIf,
+   void stopCategoryMap(category_map_t& cats);
+   void deleteCategoryMap(category_map_t& cats);
+   const char* statusAsString(facebook::fb303::fb_status new_status);
+-  bool createCategoryFromModel(const std::string &category,
+-                               const boost::shared_ptr<StoreQueue> &model);
++  bool createCategoryFromModel(const std::string &category, 
++                               const boost::shared_ptr<StoreQueue> &model,
++                               std::string& thread_name);
+   boost::shared_ptr<StoreQueue>
+     configureStoreCategory(pStoreConf store_conf,
+                            const std::string &category,
+                            const boost::shared_ptr<StoreQueue> &model,
+-                           std::string &thread_name,
++                           std::string& thread_name,
+                            bool category_list=false);
+   bool configureStore(pStoreConf store_conf, int* num_stores);
+   void stopStores();
+diff --git a/src/store_queue.cpp b/src/store_queue.cpp
+index 5a6f8e8..35ba43b 100644
+--- a/src/store_queue.cpp
++++ b/src/store_queue.cpp
+@@ -53,7 +53,7 @@ StoreQueue::StoreQueue(const string& type, const string& category,
+     mustSucceed(true),
+     isAudit(false) {
+ 
+-  store = Store::createStore(this, type, category, thread_name
++  store = Store::createStore(this, type, category, thread_name,
+                             false, multiCategory);
+   if (!store) {
+     throw std::runtime_error("createStore failed in StoreQueue constructor. Invalid type?");
+@@ -70,7 +70,7 @@ StoreQueue::StoreQueue(const boost::shared_ptr<StoreQueue> example,
+     isModel(false),
+     multiCategory(example->multiCategory),
+     categoryHandled(category),
+-    threadName(thread_name)
++    threadName(thread_name),
+     checkPeriod(example->checkPeriod),
+     targetWriteSize(example->targetWriteSize),
+     maxWriteInterval(example->maxWriteInterval),
+diff --git a/src/store_queue.h b/src/store_queue.h
+index 0410575..8e67fac 100644
+--- a/src/store_queue.h
++++ b/src/store_queue.h
+@@ -37,7 +37,8 @@ class AuditManager;
+ class StoreQueue {
+  public:
+   StoreQueue(const std::string& type, const std::string& category,
+-             unsigned check_period, std::string& thread_name,
++             std::string& thread_name,
++             unsigned check_period,
+              bool is_model=false, bool multi_category=false);
+   StoreQueue(const boost::shared_ptr<StoreQueue> example,
+              const std::string &category, std::string &thread_name);

@@ -1,0 +1,474 @@
+commit 8d86f1bf2ea25e85d11198f74b17632c91e2441e
+Author: raju <raju@databusdev1.mkhoj.com>
+Date:   Wed Jul 23 06:36:32 2014 +0000
+
+    apply patch-threads
+
+diff --git a/src/scribe_server.cpp b/src/scribe_server.cpp
+index 294fbee..0b9f7b2 100644
+--- a/src/scribe_server.cpp
++++ b/src/scribe_server.cpp
+@@ -874,13 +874,35 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
+   }
+   else if (single_category) {
+     // configure single store
+-    shared_ptr<StoreQueue> result =
+-      configureStoreCategory(store_conf, category_list[0], model);
++	  // TODO  create multiple store queues
++	  //long int num_store_threads;
++	  store_conf.getInt("num_store_threads", num_store_threads);
++        if (!num_store_threads || num_store_threads <= 0) {
++        	LOG_OPER("AAAAAAAAAAA num thread are zero");
++        	shared_ptr<StoreQueue> result =
++        			configureStoreCategory(store_conf, category_list[0], "", model);
++        	if (result == NULL) {
++        		return false;
++        	}
++        } else {
++        	for (std::size_t i = 0; i < num_store_threads; i++) {
++        		std::ostringstream ostr;
++        		ostr << "thread-" << i;
++        		std::string thread_name = ostr.string();
++                LOG_OPER("AAAAAAAAAAAAAAA thread name [%s]  ", thread_name.c_str());
++        		shared_ptr<StoreQueue> result =
++        				configureStoreCategory(store_conf, category_list[0], thread_name, model);
++        		if (result == NULL) {
++        			return false;
++        		}
++
++        	}
++        }
+ 
+-    if (result == NULL) {
++    /*if (result == NULL) {
+       return false;
+     }
+-
++*/
+     (*numstores)++;
+   } else {
+     // configure multiple stores
+@@ -927,6 +949,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
+   pStoreConf store_conf,                       //configuration for store
+   const string &category,                      //category name
+   const boost::shared_ptr<StoreQueue> &model,  //model to use (optional)
++  string &thread_name,                         // store thread name
+   bool category_list) {                        //is a list of stores?
+ 
+   bool is_default = false;
+@@ -987,8 +1010,8 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
+       is_model = newThreadPerCategory && categories;
+ 
+       pstore =
+-        shared_ptr<StoreQueue>(new StoreQueue(type, store_name, checkPeriod,
+-                                              is_model, multi_category));
++    		  shared_ptr<StoreQueue>(new StoreQueue(type, store_name, checkPeriod,
++    				  thread_name, is_model, multi_category));
+     }
+   } catch (...) {
+     pstore.reset();
+diff --git a/src/scribe_server.h b/src/scribe_server.h
+index f52b280..d6f870d 100644
+--- a/src/scribe_server.h
++++ b/src/scribe_server.h
+@@ -85,6 +85,7 @@ class scribeHandler : virtual public scribe::thrift::scribeIf,
+   boost::shared_ptr<apache::thrift::server::TNonblockingServer> server;
+ 
+   unsigned long checkPeriod; // periodic check interval for all contained stores
++  unsigned long num_store_threads;
+ 
+   // This map has an entry for each configured category.
+   // Each of these entries is a map of type->StoreQueue.
+@@ -135,6 +136,7 @@ class scribeHandler : virtual public scribe::thrift::scribeIf,
+     configureStoreCategory(pStoreConf store_conf,
+                            const std::string &category,
+                            const boost::shared_ptr<StoreQueue> &model,
++                           std::string &thread_name,
+                            bool category_list=false);
+   bool configureStore(pStoreConf store_conf, int* num_stores);
+   void stopStores();
+diff --git a/src/store.cpp b/src/store.cpp
+index e33ad5b..35c9a72 100644
+--- a/src/store.cpp
++++ b/src/store.cpp
+@@ -81,34 +81,34 @@ bool shouldSendDummy(boost::shared_ptr<logentry_vector_t> messages) {
+ 
+ boost::shared_ptr<Store>
+ Store::createStore(StoreQueue* storeq, const string& type,
+-                   const string& category, bool readable,
++                   const string& category, string& thread_name, bool readable,
+                    bool multi_category) {
+   if (0 == type.compare("file")) {
+-    return shared_ptr<Store>(new FileStore(storeq, category, multi_category,
++    return shared_ptr<Store>(new FileStore(storeq, category, thread_name, multi_category,
+                                           readable));
+   } else if (0 == type.compare("buffer")) {
+-    return shared_ptr<Store>(new BufferStore(storeq,category, multi_category));
++    return shared_ptr<Store>(new BufferStore(storeq,category, thread_name, multi_category));
+   } else if (0 == type.compare("network")) {
+-    return shared_ptr<Store>(new NetworkStore(storeq, category,
++    return shared_ptr<Store>(new NetworkStore(storeq, category, thread_name,
+                                               multi_category));
+   } else if (0 == type.compare("bucket")) {
+-    return shared_ptr<Store>(new BucketStore(storeq, category,
++    return shared_ptr<Store>(new BucketStore(storeq, category, thread_name,
+                                             multi_category));
+   } else if (0 == type.compare("thriftfile")) {
+-    return shared_ptr<Store>(new ThriftFileStore(storeq, category,
++    return shared_ptr<Store>(new ThriftFileStore(storeq, category, thread_name,
+                                                 multi_category));
+   } else if (0 == type.compare("null")) {
+-    return shared_ptr<Store>(new NullStore(storeq, category, multi_category));
++    return shared_ptr<Store>(new NullStore(storeq, category, thread_name, multi_category));
+   } else if (0 == type.compare("multi")) {
+-    return shared_ptr<Store>(new MultiStore(storeq, category, multi_category));
++    return shared_ptr<Store>(new MultiStore(storeq, category, thread_name, multi_category));
+   } else if (0 == type.compare("category")) {
+-    return shared_ptr<Store>(new CategoryStore(storeq, category,
++    return shared_ptr<Store>(new CategoryStore(storeq, category, thread_name,
+                                               multi_category));
+   } else if (0 == type.compare("multifile")) {
+-    return shared_ptr<Store>(new MultiFileStore(storeq, category,
++    return shared_ptr<Store>(new MultiFileStore(storeq, category, thread_name,
+                                                 multi_category));
+   } else if (0 == type.compare("thriftmultifile")) {
+-    return shared_ptr<Store>(new ThriftMultiFileStore(storeq, category,
++    return shared_ptr<Store>(new ThriftMultiFileStore(storeq, category, thread_name,
+                                                       multi_category));
+   } else {
+     return shared_ptr<Store>();
+@@ -117,9 +117,11 @@ Store::createStore(StoreQueue* storeq, const string& type,
+ 
+ Store::Store(StoreQueue* storeq,
+              const string& category,
++             string& thread_name,
+              const string &type,
+              bool multi_category)
+   : categoryHandled(category),
++    threadName(thread_name)
+     multiCategory(multi_category),
+     storeType(type),
+     isPrimary(false),
+@@ -200,9 +202,9 @@ void Store::auditMessagesSent(boost::shared_ptr<logentry_vector_t>& messages,
+ }
+ 
+ FileStoreBase::FileStoreBase(StoreQueue* storeq,
+-                             const string& category,
++                             const string& category, string& thread_name,
+                              const string &type, bool multi_category)
+-  : Store(storeq, category, type, multi_category),
++  : Store(storeq, category, thread_name, type, multi_category),
+     baseFilePath("/tmp"),
+     subDirectory(""),
+     filePath("/tmp"),
+@@ -611,6 +613,10 @@ void FileStoreBase::setHostNameSubDir() {
+   } else {
+     subDirectory = hoststring;
+   }
++  // append threadName to the subdirectory
++  if (threadName || !threadName.empty()) {
++	  subDirectory = hostString + "_" +threadName;
++  }
+ }
+ 
+ void FileStoreBase::auditFileClosed() {
+@@ -632,9 +638,9 @@ void FileStoreBase::auditFileClosed() {
+ }
+ 
+ FileStore::FileStore(StoreQueue* storeq,
+-                     const string& category,
++                     const string& category, string& thread_name,
+                      bool multi_category, bool is_buffer_file)
+-  : FileStoreBase(storeq, category, "file", multi_category),
++  : FileStoreBase(storeq, category, thread_name, "file", multi_category),
+     isBufferFile(is_buffer_file),
+     addNewlines(false),
+     encodeBase64Flag(false),
+@@ -1132,8 +1138,9 @@ bool FileStore::empty(struct tm* now) {
+ 
+ ThriftFileStore::ThriftFileStore(StoreQueue* storeq,
+                                  const std::string& category,
++                                 string& thread_name,
+                                  bool multi_category)
+-  : FileStoreBase(storeq, category, "thriftfile", multi_category),
++  : FileStoreBase(storeq, category, thread_name, "thriftfile", multi_category),
+     flushFrequencyMs(0),
+     msgBufferSize(0),
+     addNewlines(false),	
+@@ -1342,8 +1349,9 @@ bool ThriftFileStore::createFileDirectory () {
+ 
+ BufferStore::BufferStore(StoreQueue* storeq,
+                         const string& category,
++                        string& thread_name,
+                         bool multi_category)
+-  : Store(storeq, category, "buffer", multi_category),
++  : Store(storeq, category, thread_name, "buffer", multi_category),
+     bufferSendRate(DEFAULT_BUFFERSTORE_SEND_RATE),
+     avgRetryInterval(DEFAULT_BUFFERSTORE_AVG_RETRY_INTERVAL),
+     retryIntervalRange(DEFAULT_BUFFERSTORE_RETRY_INTERVAL_RANGE),
+@@ -1844,8 +1852,9 @@ std::string BufferStore::getStatus() {
+ 
+ NetworkStore::NetworkStore(StoreQueue* storeq,
+                           const string& category,
++                          string& thread_name,
+                           bool multi_category)
+-  : Store(storeq, category, "network", multi_category),
++  : Store(storeq, category, thread_name, "network", multi_category),
+     useConnPool(false),
+     serviceBased(false),
+     remotePort(0),
+@@ -2121,8 +2130,9 @@ void NetworkStore::flush() {
+ 
+ BucketStore::BucketStore(StoreQueue* storeq,
+                         const string& category,
++                        string& thread_name,
+                         bool multi_category)
+-  : Store(storeq, category, "bucket", multi_category),
++  : Store(storeq, category, thread_name, "bucket", multi_category),
+     bucketType(context_log),
+     delimiter(DEFAULT_BUCKETSTORE_DELIMITER),
+     removeKey(false),
+@@ -2656,8 +2666,9 @@ string BucketStore::getMessageWithoutKey(const std::string& message) {
+ 
+ NullStore::NullStore(StoreQueue* storeq,
+                      const std::string& category,
++                     string& thread_name,
+                      bool multi_category)
+-  : Store(storeq, category, "null", multi_category)
++  : Store(storeq, category, thread_name, "null", multi_category)
+ {}
+ 
+ NullStore::~NullStore() {
+@@ -2711,8 +2722,9 @@ bool NullStore::empty(struct tm* now) {
+ 
+ MultiStore::MultiStore(StoreQueue* storeq,
+                       const std::string& category,
++                      string& thread_name,
+                       bool multi_category)
+-  : Store(storeq, category, "multi", multi_category) {
++  : Store(storeq, category, thread_name, "multi", multi_category) {
+ }
+ 
+ MultiStore::~MultiStore() {
+@@ -2883,8 +2895,9 @@ void MultiStore::flush() {
+ 
+ CategoryStore::CategoryStore(StoreQueue* storeq,
+                              const std::string& category,
++                             string& thread_name,
+                              bool multiCategory)
+-  : Store(storeq, category, "category", multiCategory) {
++  : Store(storeq, category, thread_name, "category", multiCategory) {
+ }
+ 
+ CategoryStore::CategoryStore(StoreQueue* storeq,
+@@ -3051,8 +3064,9 @@ void CategoryStore::flush() {
+ 
+ MultiFileStore::MultiFileStore(StoreQueue* storeq,
+                                const std::string& category,
++                               string thread_name,
+                                bool multi_category)
+-  : CategoryStore(storeq, category, "MultiFileStore", multi_category) {
++  : CategoryStore(storeq, category, thread_name, "MultiFileStore", multi_category) {
+ }
+ 
+ MultiFileStore::~MultiFileStore() {
+diff --git a/src/store.h b/src/store.h
+index 4b8f05e..f8c915e 100644
+--- a/src/store.h
++++ b/src/store.h
+@@ -55,9 +55,10 @@ class Store {
+   static boost::shared_ptr<Store>
+     createStore(StoreQueue* storeq,
+                 const std::string& type, const std::string& category,
++                std::string& thread_name,
+                 bool readable = false, bool multi_category = false);
+ 
+-  Store(StoreQueue* storeq, const std::string& category,
++  Store(StoreQueue* storeq, const std::string& category, std::string& thread_name,
+         const std::string &type, bool multi_category = false);
+   virtual ~Store();
+ 
+@@ -97,6 +98,7 @@ class Store {
+         const std::string& filename);
+   std::string status;
+   std::string categoryHandled;
++  std::string threadName;
+   bool multiCategory;             // Whether multiple categories are handled
+   std::string storeType;
+   // Whether this is a primary store of its parent. This flag is used to decide 
+@@ -121,7 +123,7 @@ class Store {
+ class FileStoreBase : public Store {
+  public:
+   FileStoreBase(StoreQueue* storeq,
+-                const std::string& category,
++                const std::string& category, std::string& thread_name
+                 const std::string &type, bool multi_category);
+   ~FileStoreBase();
+ 
+@@ -206,7 +208,7 @@ class FileStoreBase : public Store {
+ class FileStore : public FileStoreBase {
+ 
+  public:
+-  FileStore(StoreQueue* storeq, const std::string& category,
++  FileStore(StoreQueue* storeq, const std::string& category, std::string thread_name,
+             bool multi_category, bool is_buffer_file = false);
+   ~FileStore();
+ 
+@@ -255,7 +257,7 @@ class FileStore : public FileStoreBase {
+ class ThriftFileStore : public FileStoreBase {
+  public:
+   ThriftFileStore(StoreQueue* storeq,
+-                  const std::string& category,
++                  const std::string& category, std::string& thread_name,
+                   bool multi_category);
+   ~ThriftFileStore();
+ 
+@@ -299,7 +301,7 @@ class BufferStore : public Store {
+ 
+  public:
+   BufferStore(StoreQueue* storeq,
+-              const std::string& category,
++              const std::string& category, std::string& thread_name,
+               bool multi_category);
+   ~BufferStore();
+ 
+@@ -390,7 +392,7 @@ class NetworkStore : public Store {
+ 
+  public:
+   NetworkStore(StoreQueue* storeq,
+-               const std::string& category,
++               const std::string& category, std::string& thread_name,
+                bool multi_category);
+   ~NetworkStore();
+ 
+@@ -440,7 +442,7 @@ class BucketStore : public Store {
+ 
+  public:
+   BucketStore(StoreQueue* storeq,
+-              const std::string& category,
++              const std::string& category, std::string& thread_name,
+               bool multi_category);
+   ~BucketStore();
+ 
+@@ -492,7 +494,7 @@ class NullStore : public Store {
+ 
+  public:
+   NullStore(StoreQueue* storeq,
+-            const std::string& category,
++            const std::string& category, std::string& thread_name,
+             bool multi_category);
+   virtual ~NullStore();
+ 
+@@ -528,7 +530,7 @@ class NullStore : public Store {
+ class MultiStore : public Store {
+  public:
+   MultiStore(StoreQueue* storeq,
+-             const std::string& category,
++             const std::string& category, std::string& thread_name,
+              bool multi_category);
+   ~MultiStore();
+ 
+@@ -572,7 +574,7 @@ class MultiStore : public Store {
+ class CategoryStore : public Store {
+  public:
+   CategoryStore(StoreQueue* storeq,
+-                const std::string& category,
++                const std::string& category, std::string& thread_name,
+                 bool multi_category);
+   CategoryStore(StoreQueue* storeq,
+                 const std::string& category,
+@@ -609,7 +611,7 @@ class CategoryStore : public Store {
+ class MultiFileStore : public CategoryStore {
+  public:
+   MultiFileStore(StoreQueue* storeq,
+-                const std::string& category,
++                const std::string& category, std::string& thread_name,
+                 bool multi_category);
+   ~MultiFileStore();
+   void configure(pStoreConf configuration, pStoreConf parent);
+@@ -628,7 +630,7 @@ class MultiFileStore : public CategoryStore {
+ class ThriftMultiFileStore : public CategoryStore {
+  public:
+   ThriftMultiFileStore(StoreQueue* storeq,
+-                       const std::string& category,
++                       const std::string& category, std::string& thread_name,
+                        bool multi_category);
+   ~ThriftMultiFileStore();
+   void configure(pStoreConf configuration, pStoreConf parent);
+diff --git a/src/store_queue.cpp b/src/store_queue.cpp
+index 5df23fb..9cfd5f1 100644
+--- a/src/store_queue.cpp
++++ b/src/store_queue.cpp
+@@ -38,7 +38,8 @@ void* threadStatic(void *this_ptr) {
+ }
+ 
+ StoreQueue::StoreQueue(const string& type, const string& category,
+-                       unsigned check_period, bool is_model, bool multi_category)
++                       string& thread_name, unsigned check_period,
++                       bool is_model, bool multi_category)
+   : msgQueueSize(0),
+     hasWork(false),
+     stopping(false),
+@@ -46,12 +47,13 @@ StoreQueue::StoreQueue(const string& type, const string& category,
+     multiCategory(multi_category),
+     categoryHandled(category),
+     checkPeriod(check_period),
++    threadName(thread_name),
+     targetWriteSize(DEFAULT_TARGET_WRITE_SIZE),
+     maxWriteInterval(DEFAULT_MAX_WRITE_INTERVAL),
+     mustSucceed(true),
+     isAudit(false) {
+ 
+-  store = Store::createStore(this, type, category,
++  store = Store::createStore(this, type, category, thread_name
+                             false, multiCategory);
+   if (!store) {
+     throw std::runtime_error("createStore failed in StoreQueue constructor. Invalid type?");
+@@ -59,6 +61,7 @@ StoreQueue::StoreQueue(const string& type, const string& category,
+   storeInitCommon();
+ }
+ 
++//TODO pass thread name for creating stores from model
+ StoreQueue::StoreQueue(const boost::shared_ptr<StoreQueue> example,
+                        const std::string &category)
+   : msgQueueSize(0),
+@@ -186,6 +189,9 @@ std::string StoreQueue::getCategoryHandled() {
+   return categoryHandled;
+ }
+ 
++std::string StoreQueue::getThreadName() {
++  return threadName;
++}
+ 
+ std::string StoreQueue::getStatus() {
+   return store->getStatus();
+diff --git a/src/store_queue.h b/src/store_queue.h
+index f534928..117e42c 100644
+--- a/src/store_queue.h
++++ b/src/store_queue.h
+@@ -37,7 +37,8 @@ class AuditManager;
+ class StoreQueue {
+  public:
+   StoreQueue(const std::string& type, const std::string& category,
+-             unsigned check_period, bool is_model=false, bool multi_category=false);
++             unsigned check_period, std::string& thread_name,
++             bool is_model=false, bool multi_category=false);
+   StoreQueue(const boost::shared_ptr<StoreQueue> example,
+              const std::string &category);
+   virtual ~StoreQueue();
+@@ -50,6 +51,7 @@ class StoreQueue {
+   std::string getStatus(); // An empty string means OK, anything else is an error
+   std::string getBaseType();
+   std::string getCategoryHandled();
++  std::string getThreadName();
+   bool isModelStore() { return isModel;}
+ 
+   // this needs to be public for the thread creation to get to it,
+@@ -122,6 +124,7 @@ class StoreQueue {
+ 
+   // configuration
+   std::string        categoryHandled;  // what category this store is handling
++  std::string        threadName;       // thread name
+   time_t             checkPeriod;      // how often to call periodicCheck in seconds
+   unsigned long long targetWriteSize;  // in bytes
+   time_t             maxWriteInterval; // in seconds
