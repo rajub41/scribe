@@ -98,6 +98,7 @@ class Store {
         const std::string& filename);
   std::string status;
   std::string categoryHandled;
+  std::string threadName;
   bool multiCategory;             // Whether multiple categories are handled
   std::string storeType;
   // Whether this is a primary store of its parent. This flag is used to decide 
