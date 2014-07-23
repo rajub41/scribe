@@ -55,9 +55,10 @@ class Store {
   static boost::shared_ptr<Store>
     createStore(StoreQueue* storeq,
                 const std::string& type, const std::string& category,
+                std::string& thread_name,
                 bool readable = false, bool multi_category = false);
 
-  Store(StoreQueue* storeq, const std::string& category,
+  Store(StoreQueue* storeq, const std::string& category, std::string& thread_name,
         const std::string &type, bool multi_category = false);
   virtual ~Store();
 
@@ -121,7 +122,7 @@ class Store {
 class FileStoreBase : public Store {
  public:
   FileStoreBase(StoreQueue* storeq,
-                const std::string& category,
+                const std::string& category, std::string& thread_name
                 const std::string &type, bool multi_category);
   ~FileStoreBase();
 
@@ -206,7 +207,7 @@ class FileStoreBase : public Store {
 class FileStore : public FileStoreBase {
 
  public:
-  FileStore(StoreQueue* storeq, const std::string& category,
+  FileStore(StoreQueue* storeq, const std::string& category, std::string thread_name,
             bool multi_category, bool is_buffer_file = false);
   ~FileStore();
 
@@ -255,7 +256,7 @@ class FileStore : public FileStoreBase {
 class ThriftFileStore : public FileStoreBase {
  public:
   ThriftFileStore(StoreQueue* storeq,
-                  const std::string& category,
+                  const std::string& category, std::string& thread_name,
                   bool multi_category);
   ~ThriftFileStore();
 
@@ -299,7 +300,7 @@ class BufferStore : public Store {
 
  public:
   BufferStore(StoreQueue* storeq,
-              const std::string& category,
+              const std::string& category, std::string& thread_name,
               bool multi_category);
   ~BufferStore();
 
@@ -390,7 +391,7 @@ class NetworkStore : public Store {
 
  public:
   NetworkStore(StoreQueue* storeq,
-               const std::string& category,
+               const std::string& category, std::string& thread_name,
                bool multi_category);
   ~NetworkStore();
 
@@ -449,7 +450,7 @@ class BucketStore : public Store {
 
  public:
   BucketStore(StoreQueue* storeq,
-              const std::string& category,
+              const std::string& category, std::string& thread_name,
               bool multi_category);
   ~BucketStore();
 
@@ -501,7 +502,7 @@ class NullStore : public Store {
 
  public:
   NullStore(StoreQueue* storeq,
-            const std::string& category,
+            const std::string& category, std::string& thread_name,
             bool multi_category);
   virtual ~NullStore();
 
@@ -537,7 +538,7 @@ class NullStore : public Store {
 class MultiStore : public Store {
  public:
   MultiStore(StoreQueue* storeq,
-             const std::string& category,
+             const std::string& category, std::string& thread_name,
              bool multi_category);
   ~MultiStore();
 
@@ -581,7 +582,7 @@ class MultiStore : public Store {
 class CategoryStore : public Store {
  public:
   CategoryStore(StoreQueue* storeq,
-                const std::string& category,
+                const std::string& category, std::string& thread_name,
                 bool multi_category);
   CategoryStore(StoreQueue* storeq,
                 const std::string& category,
@@ -618,7 +619,7 @@ class CategoryStore : public Store {
 class MultiFileStore : public CategoryStore {
  public:
   MultiFileStore(StoreQueue* storeq,
-                const std::string& category,
+                const std::string& category, std::string& thread_name,
                 bool multi_category);
   ~MultiFileStore();
   void configure(pStoreConf configuration, pStoreConf parent);
@@ -637,7 +638,7 @@ class MultiFileStore : public CategoryStore {
 class ThriftMultiFileStore : public CategoryStore {
  public:
   ThriftMultiFileStore(StoreQueue* storeq,
-                       const std::string& category,
+                       const std::string& category, std::string& thread_name,
                        bool multi_category);
   ~ThriftMultiFileStore();
   void configure(pStoreConf configuration, pStoreConf parent);
