@@ -875,18 +875,18 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
   else if (single_category) {
     // configure single store
 	  // TODO  create multiple store queues
-	  long int num_store_threads;
+	  //long int num_store_threads;
 	  store_conf.getInt("num_store_threads", num_store_threads);
-        if (!num_store_threads) {
+        if (!num_store_threads || num_store_threads <= 0) {
         	shared_ptr<StoreQueue> result =
-        	      configureStoreCategory(store_conf, category_list[0], model);
+        	      configureStoreCategory(store_conf, category_list[0], "", model);
         } else {
         	for (std::size_t i = 0; i < num_store_threads; i++) {
         		std::ostringstream ostr;
         		ostr << "thread-" << i;
         		std::string thread_name = ostr.string();
         		shared_ptr<StoreQueue> result =
-        		        	      configureStoreCategory(store_conf, category_list[0], model, thread_name);
+        		        	      configureStoreCategory(store_conf, category_list[0], thread_name, model);
         	}
         }
 
@@ -942,6 +942,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
   pStoreConf store_conf,                       //configuration for store
   const string &category,                      //category name
   const boost::shared_ptr<StoreQueue> &model,  //model to use (optional)
+  string &thread_name,                         // store thread name
   bool category_list) {                        //is a list of stores?
 
   bool is_default = false;
@@ -1002,8 +1003,8 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
       is_model = newThreadPerCategory && categories;
 
       pstore =
-        shared_ptr<StoreQueue>(new StoreQueue(type, store_name, checkPeriod,
-                                              is_model, multi_category));
+    		  shared_ptr<StoreQueue>(new StoreQueue(type, store_name, checkPeriod,
+    				  thread_name, is_model, multi_category));
     }
   } catch (...) {
     pstore.reset();
