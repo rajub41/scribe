@@ -130,13 +130,14 @@ class scribeHandler : virtual public scribe::thrift::scribeIf,
   void stopCategoryMap(category_map_t& cats);
   void deleteCategoryMap(category_map_t& cats);
   const char* statusAsString(facebook::fb303::fb_status new_status);
-  bool createCategoryFromModel(const std::string &category,
-                               const boost::shared_ptr<StoreQueue> &model);
+  bool createCategoryFromModel(const std::string &category, 
+                               const boost::shared_ptr<StoreQueue> &model,
+                               std::string& thread_name);
   boost::shared_ptr<StoreQueue>
     configureStoreCategory(pStoreConf store_conf,
                            const std::string &category,
                            const boost::shared_ptr<StoreQueue> &model,
-                           std::string &thread_name,
+                           std::string& thread_name,
                            bool category_list=false);
   bool configureStore(pStoreConf store_conf, int* num_stores);
   void stopStores();

@@ -53,7 +53,7 @@ StoreQueue::StoreQueue(const string& type, const string& category,
     mustSucceed(true),
     isAudit(false) {
 
-  store = Store::createStore(this, type, category, thread_name
+  store = Store::createStore(this, type, category, thread_name,
                             false, multiCategory);
   if (!store) {
     throw std::runtime_error("createStore failed in StoreQueue constructor. Invalid type?");
@@ -70,7 +70,7 @@ StoreQueue::StoreQueue(const boost::shared_ptr<StoreQueue> example,
     isModel(false),
     multiCategory(example->multiCategory),
     categoryHandled(category),
-    threadName(thread_name)
+    threadName(thread_name),
     checkPeriod(example->checkPeriod),
     targetWriteSize(example->targetWriteSize),
     maxWriteInterval(example->maxWriteInterval),

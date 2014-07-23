@@ -37,7 +37,8 @@ class AuditManager;
 class StoreQueue {
  public:
   StoreQueue(const std::string& type, const std::string& category,
-             unsigned check_period, std::string& thread_name,
+             std::string& thread_name,
+             unsigned check_period,
              bool is_model=false, bool multi_category=false);
   StoreQueue(const boost::shared_ptr<StoreQueue> example,
              const std::string &category, std::string &thread_name);
