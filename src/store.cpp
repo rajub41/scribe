@@ -121,7 +121,7 @@ Store::Store(StoreQueue* storeq,
              const string &type,
              bool multi_category)
   : categoryHandled(category),
-    threadName(thread_name)
+    threadName(thread_name),
     multiCategory(multi_category),
     storeType(type),
     isPrimary(false),
@@ -625,8 +625,8 @@ void FileStoreBase::setHostNameSubDir() {
     subDirectory = hoststring;
   }
   // append threadName to the subdirectory
-  if (threadName || !threadName.empty()) {
-	  subDirectory = hostString + "_" +threadName;
+  if (threadName.empty()) {
+	  subDirectory = hoststring + "_" +threadName;
   }
 }
 
@@ -853,8 +853,8 @@ void FileStore::flush() {
   }
 }
 
-shared_ptr<Store> FileStore::copy(const std::string &category) {
-  FileStore *store = new FileStore(storeQueue, category, multiCategory,
+shared_ptr<Store> FileStore::copy(const std::string &category, std::string &thread_name) {
+  FileStore *store = new FileStore(storeQueue, category, thread_name, multiCategory,
                                    isBufferFile);
   shared_ptr<Store> copied = shared_ptr<Store>(store);
 
@@ -1149,7 +1149,7 @@ bool FileStore::empty(struct tm* now) {
 
 ThriftFileStore::ThriftFileStore(StoreQueue* storeq,
                                  const std::string& category,
-                                 string& thread_name,
+                                 std::string& thread_name,
                                  bool multi_category)
   : FileStoreBase(storeq, category, thread_name, "thriftfile", multi_category),
     flushFrequencyMs(0),
@@ -1161,8 +1161,8 @@ ThriftFileStore::ThriftFileStore(StoreQueue* storeq,
 ThriftFileStore::~ThriftFileStore() {
 }
 
-shared_ptr<Store> ThriftFileStore::copy(const std::string &category) {
-  ThriftFileStore *store = new ThriftFileStore(storeQueue, category, multiCategory);
+shared_ptr<Store> ThriftFileStore::copy(const std::string &category, std::string &thread_name) {
+  ThriftFileStore *store = new ThriftFileStore(storeQueue, category, thread_name, multiCategory);
   shared_ptr<Store> copied = shared_ptr<Store>(store);
 
   store->flushFrequencyMs = flushFrequencyMs;
@@ -1464,7 +1464,7 @@ void BufferStore::configure(pStoreConf configuration, pStoreConf parent) {
       cout << msg << endl;
     } else {
       // If replayBuffer is true, then we need to create a readable store
-      secondaryStore = createStore(storeQueue, type, categoryHandled,
+      secondaryStore = createStore(storeQueue, type, categoryHandled, threadName,
                                    replayBuffer, multiCategory);
       secondaryStore->configure(secondary_store_conf, storeConf);
     }
@@ -1488,7 +1488,7 @@ void BufferStore::configure(pStoreConf configuration, pStoreConf parent) {
       string msg("Bad config - buffer primary store cannot be multistore");
       setStatus(msg);
     } else {
-      primaryStore = createStore(storeQueue, type, categoryHandled, false,
+      primaryStore = createStore(storeQueue, type, categoryHandled, threadName, false,
                                   multiCategory);
       primaryStore->configure(primary_store_conf, storeConf);
       // set the primary flag for this store to true. This will be used later
@@ -1502,11 +1502,11 @@ void BufferStore::configure(pStoreConf configuration, pStoreConf parent) {
   // If the config is bad we'll still try to write the data to a
   // default location on local disk.
   if (!secondaryStore) {
-    secondaryStore = createStore(storeQueue, "file", categoryHandled, true,
+    secondaryStore = createStore(storeQueue, "file", categoryHandled, threadName, true,
                                 multiCategory);
   }
   if (!primaryStore) {
-    primaryStore = createStore(storeQueue, "file", categoryHandled, false,
+    primaryStore = createStore(storeQueue, "file", categoryHandled, threadName, false,
                                multiCategory);
   }
 }
@@ -1556,8 +1556,8 @@ void BufferStore::flush() {
   }
 }
 
-shared_ptr<Store> BufferStore::copy(const std::string &category) {
-  BufferStore *store = new BufferStore(storeQueue, category, multiCategory);
+shared_ptr<Store> BufferStore::copy(const std::string &category, std::string &thread_name) {
+  BufferStore *store = new BufferStore(storeQueue, category, thread_name, multiCategory);
   shared_ptr<Store> copied = shared_ptr<Store>(store);
 
   store->bufferSendRate = bufferSendRate;
@@ -1571,10 +1571,10 @@ shared_ptr<Store> BufferStore::copy(const std::string &category) {
   store->maxRandomOffset = maxRandomOffset;
   store->adaptiveBackoff = adaptiveBackoff;
 
-  store->primaryStore = primaryStore->copy(category);
+  store->primaryStore = primaryStore->copy(category, thread_name);
   // copy the primary status
   store->primaryStore->setStorePrimary(primaryStore->isStorePrimary());
-  store->secondaryStore = secondaryStore->copy(category);
+  store->secondaryStore = secondaryStore->copy(category, thread_name);
   return copied;
 }
 
@@ -2147,8 +2147,8 @@ bool NetworkStore::isOpen() {
   return opened;
 }
 
-shared_ptr<Store> NetworkStore::copy(const std::string &category) {
-  NetworkStore *store = new NetworkStore(storeQueue, category, multiCategory);
+shared_ptr<Store> NetworkStore::copy(const std::string &category, std::string &thread_name) {
+  NetworkStore *store = new NetworkStore(storeQueue, category, thread_name, multiCategory);
   shared_ptr<Store> copied = shared_ptr<Store>(store);
 
   store->useConnPool = useConnPool;
@@ -2291,7 +2291,7 @@ void BucketStore::createBucketsFromBucket(pStoreConf configuration,
   for (unsigned int i = 0; i <= numBuckets; ++i) {
 
     shared_ptr<Store> newstore =
-      createStore(storeQueue, type, categoryHandled, false, multiCategory);
+      createStore(storeQueue, type, categoryHandled, threadName, false, multiCategory);
 
     if (!newstore) {
       error_msg = "can't create store of type: ";
@@ -2370,7 +2370,7 @@ void BucketStore::createBuckets(pStoreConf configuration) {
     }
 
     shared_ptr<Store> bucket =
-      createStore(storeQueue, type, categoryHandled, false, multiCategory);
+      createStore(storeQueue, type, categoryHandled, threadName, false, multiCategory);
 
     buckets.push_back(bucket);
     //add bucket id configuration
@@ -2584,8 +2584,8 @@ void BucketStore::periodicCheck() {
   }
 }
 
-shared_ptr<Store> BucketStore::copy(const std::string &category) {
-  BucketStore *store = new BucketStore(storeQueue, category, multiCategory);
+shared_ptr<Store> BucketStore::copy(const std::string &category, std::string &thread_name) {
+  BucketStore *store = new BucketStore(storeQueue, category, thread_name, multiCategory);
   shared_ptr<Store> copied = shared_ptr<Store>(store);
 
   store->numBuckets = numBuckets;
@@ -2595,7 +2595,7 @@ shared_ptr<Store> BucketStore::copy(const std::string &category) {
   for (std::vector<shared_ptr<Store> >::iterator iter = buckets.begin();
        iter != buckets.end();
        ++iter) {
-    store->buckets.push_back((*iter)->copy(category));
+    store->buckets.push_back((*iter)->copy(category, thread_name));
   }
 
   return copied;
@@ -2773,8 +2773,8 @@ NullStore::NullStore(StoreQueue* storeq,
 NullStore::~NullStore() {
 }
 
-boost::shared_ptr<Store> NullStore::copy(const std::string &category) {
-  NullStore *store = new NullStore(storeQueue, category, multiCategory);
+boost::shared_ptr<Store> NullStore::copy(const std::string &category, std::string &thread_name) {
+  NullStore *store = new NullStore(storeQueue, category, thread_name, multiCategory);
   shared_ptr<Store> copied = shared_ptr<Store>(store);
   return copied;
 }
@@ -2829,14 +2829,14 @@ MultiStore::MultiStore(StoreQueue* storeq,
 MultiStore::~MultiStore() {
 }
 
-boost::shared_ptr<Store> MultiStore::copy(const std::string &category) {
-  MultiStore *store = new MultiStore(storeQueue, category, multiCategory);
+boost::shared_ptr<Store> MultiStore::copy(const std::string &category, std::string &thread_name) {
+  MultiStore *store = new MultiStore(storeQueue, category, thread_name, multiCategory);
   store->report_success = this->report_success;
   boost::shared_ptr<Store> tmp_copy;
   for (std::vector<boost::shared_ptr<Store> >::iterator iter = stores.begin();
        iter != stores.end();
        ++iter) {
-    tmp_copy = (*iter)->copy(category);
+    tmp_copy = (*iter)->copy(category, thread_name);
     store->stores.push_back(tmp_copy);
   }
 
@@ -2933,7 +2933,7 @@ void MultiStore::configure(pStoreConf configuration, pStoreConf parent) {
         return;
       } else {
         // add it to the list
-        cur_store = createStore(storeQueue, cur_type, categoryHandled, false,
+        cur_store = createStore(storeQueue, cur_type, categoryHandled, threadName, false,
                                 multiCategory);
         LOG_OPER("[%s] MULTI: Configured store of type %s successfully.",
                  categoryHandled.c_str(), cur_type.c_str());
@@ -2994,24 +2994,24 @@ void MultiStore::flush() {
 
 CategoryStore::CategoryStore(StoreQueue* storeq,
                              const std::string& category,
-                             string& thread_name,
+                             std::string& thread_name,
                              bool multiCategory)
   : Store(storeq, category, thread_name, "category", multiCategory) {
 }
 
 CategoryStore::CategoryStore(StoreQueue* storeq,
-                             const std::string& category,
+                             const std::string& category, std::string& thread_name,
                              const std::string& name, bool multiCategory)
-  : Store(storeq, category, name, multiCategory) {
+  : Store(storeq, category, thread_name, name, multiCategory) {
 }
 
 CategoryStore::~CategoryStore() {
 }
 
-boost::shared_ptr<Store> CategoryStore::copy(const std::string &category) {
-  CategoryStore *store = new CategoryStore(storeQueue, category, multiCategory);
+boost::shared_ptr<Store> CategoryStore::copy(const std::string &category, std::string &thread_name) {
+  CategoryStore *store = new CategoryStore(storeQueue, category, thread_name, multiCategory);
 
-  store->modelStore = modelStore->copy(category);
+  store->modelStore = modelStore->copy(category, thread_name);
 
   return shared_ptr<Store>(store);
 }
@@ -3080,7 +3080,7 @@ void CategoryStore::configureCommon(pStoreConf configuration,
                                     const string type) {
   Store::configure(configuration, parent);
   // initialize model store
-  modelStore = createStore(storeQueue, type, categoryHandled, false, false);
+  modelStore = createStore(storeQueue, type, categoryHandled, threadName, false, false);
   LOG_OPER("[%s] %s: Configured store of type %s successfully.",
            categoryHandled.c_str(), getType().c_str(), type.c_str());
   modelStore->configure(configuration, parent);
@@ -3110,7 +3110,7 @@ bool CategoryStore::handleMessages(boost::shared_ptr<logentry_vector_t> messages
 
     if (store_iter == stores.end()) {
       // Create new store for this category
-      store = modelStore->copy(category);
+      store = modelStore->copy(category, threadName);
       store->open();
       stores[category] = store;
     } else {
@@ -3163,7 +3163,7 @@ void CategoryStore::flush() {
 
 MultiFileStore::MultiFileStore(StoreQueue* storeq,
                                const std::string& category,
-                               string thread_name,
+                               std::string& thread_name,
                                bool multi_category)
   : CategoryStore(storeq, category, thread_name, "MultiFileStore", multi_category) {
 }
@@ -3177,8 +3177,8 @@ void MultiFileStore::configure(pStoreConf configuration, pStoreConf parent) {
 
 ThriftMultiFileStore::ThriftMultiFileStore(StoreQueue* storeq,
                                           const std::string& category,
-                                           bool multi_category)
-  : CategoryStore(storeq, category, "ThriftMultiFileStore", multi_category) {
+                                           std::string& thread_name, bool multi_category)
+  : CategoryStore(storeq, category, thread_name, "ThriftMultiFileStore", multi_category) {
 }
 
 ThriftMultiFileStore::~ThriftMultiFileStore() {

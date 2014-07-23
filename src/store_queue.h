@@ -40,14 +40,14 @@ class StoreQueue {
              unsigned check_period, std::string& thread_name,
              bool is_model=false, bool multi_category=false);
   StoreQueue(const boost::shared_ptr<StoreQueue> example,
-             const std::string &category);
+             const std::string &category, std::string &thread_name);
   virtual ~StoreQueue();
 
   void addMessage(logentry_ptr_t entry);
   void configureAndOpen(pStoreConf configuration); // closes first if already open
   void open();                                     // closes first if already open
   void stop();
-  boost::shared_ptr<Store> copyStore(const std::string &category);
+  boost::shared_ptr<Store> copyStore(const std::string &category, std::string &thread_name);
   std::string getStatus(); // An empty string means OK, anything else is an error
   std::string getBaseType();
   std::string getCategoryHandled();

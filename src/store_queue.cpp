@@ -63,20 +63,21 @@ StoreQueue::StoreQueue(const string& type, const string& category,
 
 //TODO pass thread name for creating stores from model
 StoreQueue::StoreQueue(const boost::shared_ptr<StoreQueue> example,
-                       const std::string &category)
+                       const std::string &category, std::string &thread_name)
   : msgQueueSize(0),
     hasWork(false),
     stopping(false),
     isModel(false),
     multiCategory(example->multiCategory),
     categoryHandled(category),
+    threadName(thread_name)
     checkPeriod(example->checkPeriod),
     targetWriteSize(example->targetWriteSize),
     maxWriteInterval(example->maxWriteInterval),
     mustSucceed(example->mustSucceed),
     isAudit(false) {
 
-  store = example->copyStore(category);
+  store = example->copyStore(category, thread_name);
   if (!store) {
     throw std::runtime_error("createStore failed copying model store");
   }
@@ -181,8 +182,8 @@ void StoreQueue::open() {
   }
 }
 
-shared_ptr<Store> StoreQueue::copyStore(const std::string &category) {
-  return store->copy(category);
+shared_ptr<Store> StoreQueue::copyStore(const std::string &category, std::string& thread_name) {
+  return store->copy(category, thread_name);
 }
 
 std::string StoreQueue::getCategoryHandled() {
