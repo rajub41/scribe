@@ -874,8 +874,23 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
   }
   else if (single_category) {
     // configure single store
-    shared_ptr<StoreQueue> result =
-      configureStoreCategory(store_conf, category_list[0], model);
+	  // TODO  create multiple store queues
+	  long int num_store_threads;
+	  store_conf.getInt("num_store_threads", num_store_threads);
+        if (!num_store_threads) {
+        	shared_ptr<StoreQueue> result =
+        	      configureStoreCategory(store_conf, category_list[0], model);
+        } else {
+        	for (std::size_t i = 0; i < num_store_threads; i++) {
+        		std::ostringstream ostr;
+        		ostr << "thread-" << i;
+        		std::string thread_name = ostr.string();
+        		shared_ptr<StoreQueue> result =
+        		        	      configureStoreCategory(store_conf, category_list[0], model, thread_name);
+        	}
+        }
+
+
 
     if (result == NULL) {
       return false;
