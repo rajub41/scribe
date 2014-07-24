@@ -125,10 +125,12 @@ string StdFile::getFrame(unsigned data_length) {
 
 bool StdFile::write(const std::string& data) {
 
+
   if (!file.is_open()) {
     return false;
   }
 
+LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAA spooling data..in write method ");
   file << data;
   if (file.bad()) {
     return false;
