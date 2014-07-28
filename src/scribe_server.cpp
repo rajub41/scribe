@@ -534,6 +534,7 @@ void scribeHandler::addMessage(
 	      }
 	      //numStores++;
 	    }
+          LOG_OPER("AAAAAAAAAAAAAAAAAAA minimum queue size %lu   and minIndex %d ", min_queue_size, minIndex);
 	  // add message to only single queue
 	  boost::shared_ptr<LogEntry> ptr(new LogEntry);
 	  ptr->category = entry.category;
@@ -923,8 +924,10 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
     // configure single store
 	  // TODO  create multiple store queues
 	  //long int num_store_threads;
+          unsigned long num_store_threads;
 	  store_conf->getUnsigned("num_store_threads", num_store_threads);
-        if (!num_store_threads || num_store_threads <= 0) {
+         LOG_OPER("AAAAAAAAAAAAAAAAA number of threads %lu  for category %s", num_store_threads, category.c_str());        
+if (!num_store_threads || num_store_threads <= 0) {
         	LOG_OPER("AAAAAAAAAAA num thread are zero");
                // TODDDDOOOOOOOOOOOOOOOOOOOOOOOOOOO
                 ostringstream ostr;
@@ -936,6 +939,7 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
         		return false;
         	}
         } else {
+        
         	for (std::size_t i = 0; i < num_store_threads; i++) {
         		ostringstream ostr;
         		ostr << "thread-" << i;
