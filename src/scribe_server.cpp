@@ -481,7 +481,7 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
 
   return store_list;
 }
-
+/*
 // Add this message to every store in list
 void scribeHandler::addMessage(
   const LogEntry& entry,
@@ -507,7 +507,7 @@ void scribeHandler::addMessage(
     incCounter(entry.category, "received bad");
   }
 }
-
+*/
 // Add this message to every store in list
 void scribeHandler::addMessage(
   const LogEntry& entry,
@@ -525,14 +525,14 @@ void scribeHandler::addMessage(
   if (numstores) {
 	  //TODO TODO check this method
 	  // find the minimum size store queue
-	   int minIdex = 0;
-	    size_t min_queuue_size = (*store_list)[0]->size();
+	   int minIndex = 0;
+	    size_t min_queue_size = (*store_list)[0]->getSize();
 	    for (int i = 1; i < store_list->size(); i++) {
 	      if (min_queue_size > (*store_list)[i]->getSize()) {
 	         minIndex = i;
 	         min_queue_size = (*store_list)[i]->getSize();
 	      }
-	      numStores++;
+	      //numStores++;
 	    }
 	  // add message to only single queue
 	  boost::shared_ptr<LogEntry> ptr(new LogEntry);
