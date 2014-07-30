@@ -228,6 +228,7 @@ void StoreQueue::threadMember() {
 
     // handle commands
     //
+	//LOG_OPER("AAAAAAAA acquire the cmdMutex lock [%s]", threadName.c_str());
     pthread_mutex_lock(&cmdMutex);
     while (!cmdQueue.empty()) {
       StoreCommand cmd = cmdQueue.front();
@@ -235,15 +236,18 @@ void StoreQueue::threadMember() {
 
       switch (cmd.command) {
       case CMD_CONFIGURE:
+    	 // LOG_OPER("AAAAAAAA command configure  [%s]", threadName.c_str());
         configureInline(cmd.configuration);
         openInline();
         open = true;
         break;
       case CMD_OPEN:
+    	 // LOG_OPER("AAAAAAAA command open  [%s]", threadName.c_str());
         openInline();
         open = true;
         break;
       case CMD_STOP:
+    	//  LOG_OPER("AAAAAAAA command stop  [%s]", threadName.c_str());
         stop = true;
         break;
       default:
@@ -256,7 +260,10 @@ void StoreQueue::threadMember() {
     time_t this_loop;
     time(&this_loop);
     if (!stop && ((this_loop - last_periodic_check) >= checkPeriod)) {
-      if (open) store->periodicCheck();
+      if (open){
+    	  // LOG_OPER("AAAAAAAAAA periodic check [%s]", threadName.c_str());
+    	  store->periodicCheck();
+      }
       last_periodic_check = this_loop;
     }
 
@@ -267,7 +274,9 @@ void StoreQueue::threadMember() {
       auditMgr->performAuditTask();
     }
 
+  //  LOG_OPER("AAAAAAAAAAAAa acquire lock on msgMutex [%s]", threadName.c_str());
     pthread_mutex_lock(&msgMutex);
+    //LOG_OPER("AAAAAAAAAAAAAAA release lock on cmdMutex [%s]", threadName.c_str());
     pthread_mutex_unlock(&cmdMutex);
 
     boost::shared_ptr<logentry_vector_t> messages;
@@ -292,14 +301,17 @@ void StoreQueue::threadMember() {
       // reset timer
       last_handle_messages = this_loop;
     }
-
+//LOG_OPER("AAAAAAAAAAA release msgMutex [%s]", threadName.c_str());
     pthread_mutex_unlock(&msgMutex);
 
     if (messages) {
+    	LOG_OPER("AAAAAAAAAA handle messages [%s]", threadName.c_str());
       if (!store->handleMessages(messages)) {
+    	  LOG_OPER("AAAAAAAAAAA not able to handle messages [%s]", threadName.c_str());
         // Store could not handle these messages
         processFailedMessages(messages);
       }
+      LOG_OPER("AAAAAAAAAAAA flush the store ");
       store->flush();
     }
 
@@ -311,6 +323,7 @@ void StoreQueue::threadMember() {
 
       // wait until there's some work to do or we timeout
       pthread_mutex_lock(&hasWorkMutex);
+      LOG_OPER("AAAAAAAAAAAAA acquired the hasworkmutex lock [%s]", threadName.c_str());
       if (!hasWork) {
 	pthread_cond_timedwait(&hasWorkCond, &hasWorkMutex, &abs_timeout);
       }

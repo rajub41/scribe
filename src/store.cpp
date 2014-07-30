@@ -915,7 +915,7 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
   } else {
     write_file = writeFile;
   }
-
+  LOG_OPER("AAAAAAAAAAA writes data to the file [%s]", currentFilename.c_str());
   try {
     for (logentry_vector_t::iterator iter = messages->begin();
          iter != messages->end();
@@ -980,6 +980,7 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
       // Write buffer if processing last message or if larger than allowed
       if ((current_size_buffered > max_write_size && maxSize != 0) ||
           messages->end() == iter + 1 ) {
+
         bool status = write_file->write(write_buffer);
         if (status) {
           // if write succeeded, audit these messages as sent. Also enable audit
@@ -1004,6 +1005,7 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
 
       // rotate file if large enough and not writing to a separate file
       if ((currentSize > maxSize && maxSize != 0 )&& !file) {
+    	  LOG_OPER("AAAAAAAAAAAAAAAAA rotate file ");
         rotateFile();
         write_file = writeFile;
       }
@@ -1015,6 +1017,7 @@ bool FileStore::writeMessages(boost::shared_ptr<logentry_vector_t> messages,
   }
 
   if (!success) {
+	  LOG_OPER("AAAAAAAAA close the file as writing is not successful [%s]", currentFilename.c_str());
     close();
 
     // update messages to include only the messages that were not handled
@@ -1597,17 +1600,21 @@ shared_ptr<Store> BufferStore::copy(const std::string &category, std::string &th
 bool BufferStore::handleMessages(boost::shared_ptr<logentry_vector_t> messages) {
 
   if (state == STREAMING || (flushStreaming && state == SENDING_BUFFER)) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAa  primary store is handlng messages ");
     if (primaryStore->handleMessages(messages)) {
+    	LOG_OPER("AAAAAAAAAAAAA primary store is successfully handled all the messages ");
       if (adaptiveBackoff) {
         setNewRetryInterval(true);
       }
       return true;
     } else {
+    	LOG_OPER("AAAAAAAAAAAA change the state to Disconnected as primary store was not able to handle messages");
       changeState(DISCONNECTED);
     }
   }
 
   if (state != STREAMING) {
+	  LOG_OPER("AAAAAAAAAAAAAAAAAAAAAAAAA handle messages with secondary store");
     // If this fails there's nothing else we can do here.
     return secondaryStore->handleMessages(messages);
   }

@@ -650,7 +650,7 @@ ResultCode scribeHandler::Log(const vector<LogEntry>&  messages) {
     //TODO if the thread Name is not empty then call new api addMessage()
     // get the thread name --> (*store_list)[0]->getThreadName
     if (!((*store_list)[0]->getThreadName()).empty()) {
-      LOG_OPER("AAAAAAAA adding message to least sized store queue ");
+      //LOG_OPER("AAAAAAAA adding message to least sized store queue ");
       addMessageToLeastSizedQueue(*msg_iter, store_list);
     } else {
       // Log this message
