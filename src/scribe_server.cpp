@@ -330,7 +330,8 @@ const char* scribeHandler::statusAsString(fb_status status) {
 
 // Should be called while holding a writeLock on scribeHandlerLock
 bool scribeHandler::createCategoryFromModel(
-  const string &category, const boost::shared_ptr<StoreQueue> &model) {
+  const string &category, const boost::shared_ptr<StoreQueue> &model,
+  string&  thread_name) {
 
   // Make sure the category name is sane.
   try {
@@ -349,7 +350,7 @@ bool scribeHandler::createCategoryFromModel(
   shared_ptr<StoreQueue> pstore;
   if (newThreadPerCategory) {
     // Create a new thread/StoreQueue for this category
-    pstore = shared_ptr<StoreQueue>(new StoreQueue(model, category));
+    pstore = shared_ptr<StoreQueue>(new StoreQueue(model, category, thread_name));
     LOG_OPER("[%s] Creating new category store from model %s",
              category.c_str(), model->getCategoryHandled().c_str());
 
@@ -404,6 +405,7 @@ bool scribeHandler::throttleRequest(const vector<LogEntry>&  messages) {
     if (!pstores) {
       throw std::logic_error("throttle check: iterator in category map holds null pointer");
     }
+    bool throttle = true;
     for (store_list_t::iterator store_iter = pstores->begin();
          store_iter != pstores->end();
          ++store_iter) {
@@ -411,12 +413,20 @@ bool scribeHandler::throttleRequest(const vector<LogEntry>&  messages) {
         throw std::logic_error("throttle check: iterator in store map holds null pointer");
       } else {
         unsigned long long size = (*store_iter)->getSize();
+        if (size <= maxQueueSize) {
+         throttle = false;
+        }/*
         if (size > maxQueueSize) {
           LOG_OPER("throttle denying request for queue size <%llu>. It would exceed max queue size <%llu>", size, maxQueueSize);
           incCounter((*store_iter)->getCategoryHandled(), "denied for queue size");
           return true;
-        }
+        }*/
       }
+    }
+    if (throttle) {
+      //LOG_OPER("throttle denying request for queue size <%llu>. It would exceed max queue size <%llu>", size, maxQueueSize);
+      incCounter((*store_iter)->getCategoryHandled(), "denied for queue size");
+      return true;
     }
   }
 
@@ -439,7 +449,11 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
       shared_ptr<store_list_t> pstores = cat_prefix_iter->second;
       for (store_list_t::iterator store_iter = pstores->begin();
           store_iter != pstores->end(); ++store_iter) {
-        createCategoryFromModel(category, *store_iter);
+    	//TODO
+        ostringstream ostr;
+        ostr << "";
+        std::string thread_name = ostr.str();
+        createCategoryFromModel(category, *store_iter, thread_name);
       }
       category_map_t::iterator cat_iter = categories.find(category);
 
@@ -460,7 +474,11 @@ shared_ptr<store_list_t> scribeHandler::createNewCategory(
   if (store_list == NULL && !defaultStores.empty()) {
     for (store_list_t::iterator store_iter = defaultStores.begin();
         store_iter != defaultStores.end(); ++store_iter) {
-      createCategoryFromModel(category, *store_iter);
+      //TODO  create multiple store queues
+      ostringstream ostr;
+      ostr << "";
+      std::string thread_name = ostr.str();
+      createCategoryFromModel(category, *store_iter, thread_name);
     }
     category_map_t::iterator cat_iter = categories.find(category);
     if (cat_iter != categories.end()) {
@@ -497,6 +515,42 @@ void scribeHandler::addMessage(
     incCounter(entry.category, "received good");
   } else {
     incCounter(entry.category, "received bad");
+  }
+}
+
+// Add this message to every least sized store in list
+void scribeHandler::addMessageToLeastSizedQueue(
+  const LogEntry& entry,
+  const shared_ptr<store_list_t>& store_list) {
+
+  int numstores = 0;
+
+  for (store_list_t::iterator store_iter = store_list->begin();
+	  store_iter != store_list->end(); ++store_iter) {
+	++numstores;
+  }
+
+  if (numstores) {
+	//TODO TODO check this method
+	// find the least sized store queue add the
+	int minIndex = 0;
+	size_t min_queue_size = (*store_list)[0]->getSize();
+	for (int i = 1; i < store_list->size(); i++) {
+	  if (min_queue_size > (*store_list)[i]->getSize()) {
+	    minIndex = i;
+	    min_queue_size = (*store_list)[i]->getSize();
+	  }
+	}
+	// add message to store queue
+	boost::shared_ptr<LogEntry> ptr(new LogEntry);
+	ptr->category = entry.category;
+	ptr->message = entry.message;
+
+	(*store_list)[minIndex]->addMessage(ptr);
+
+	incCounter(entry.category, "received good");
+  } else {
+	incCounter(entry.category, "received bad");
   }
 }
 
@@ -580,9 +634,16 @@ ResultCode scribeHandler::Log(const vector<LogEntry>&  messages) {
 
     // audit this message as received
     auditMessageReceived(*msg_iter);
-    
-    // Log this message
-    addMessage(*msg_iter, store_list);
+
+    //TODO if the thread Name is not empty then call new api addMessage()
+    // get the thread name --> (*store_list)[0]->getThreadName
+    if (!(*store_list)[0]->getThreadName.isEmpty()) {
+      LOG_OPER("AAAAAAAA adding message to least sized store queue ");
+      addMessageToLeastSizedQueue(*msg_iter, store_list);
+    } else {
+      // Log this message
+      addMessage(*msg_iter, store_list);
+    }
   }
 
   result = OK;
@@ -873,14 +934,33 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
     return false;
   }
   else if (single_category) {
-    // configure single store
-    shared_ptr<StoreQueue> result =
-      configureStoreCategory(store_conf, category_list[0], model);
-
-    if (result == NULL) {
-      return false;
+    // TODO  create multiple store queues
+    unsigned long int num_store_threads = -1;/*
+    store_conf->getUnsigned("num_store_threads", num_store_threads);
+    if (!num_store_threads || num_store_threads <= 0) {*/
+    if (!store_conf->getUnsigned("num_store_threads", num_store_threads) /* || (0 == category.compare("default"))*/) {
+      ostringstream ostr;
+      ostr << "";
+      std::string thread_name = ostr.str();
+      shared_ptr<StoreQueue> result =
+          configureStoreCategory(store_conf, category_list[0], model, thread_name);
+      if (result == NULL) {
+        return false;
+      }
+    } else {
+      for (std::size_t i = 0; i < num_store_threads; i++) {
+        ostringstream ostr;
+        ostr << "thread-" << i;
+        std::string thread_name = ostr.str();
+        LOG_OPER("Store Queue name [%s] for [%s] category", thread_name.c_str(), category_list[0].c_str());
+        shared_ptr<StoreQueue> result =
+            configureStoreCategory(store_conf, category_list[0], model, thread_name);
+        if (result == NULL) {
+          LOG_OPER("Unable to create store queue [%s] for [%s] catgeory", thread_name.c_str(), category_list[0].c_str());
+          return false;
+        }
+      }
     }
-
     (*numstores)++;
   } else {
     // configure multiple stores
@@ -894,8 +974,13 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
       return false;
     }
 
+    //TODO
+    ostringstream ostr;
+    ostr << "";
+    std::string thread_name = ostr.str();
+
     // create model so that we can create stores as copies of this model
-    model = configureStoreCategory(store_conf, categories, model, true);
+    model = configureStoreCategory(store_conf, categories, model, thread_name, true);
 
     if (model == NULL) {
       string errormsg("Bad config - could not create store for category: ");
@@ -908,7 +993,7 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
     vector<string>::iterator iter;
     for (iter = category_list.begin(); iter < category_list.end(); iter++) {
        shared_ptr<StoreQueue> result =
-         configureStoreCategory(store_conf, *iter, model);
+         configureStoreCategory(store_conf, *iter, model, thread_name);
 
       if (!result) {
         return false;
@@ -927,6 +1012,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
   pStoreConf store_conf,                       //configuration for store
   const string &category,                      //category name
   const boost::shared_ptr<StoreQueue> &model,  //model to use (optional)
+  string& thread_name,                         //storeQueue name
   bool category_list) {                        //is a list of stores?
 
   bool is_default = false;
@@ -962,7 +1048,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
     if (model != NULL) {
       // Create a copy of the model if we want a new thread per category
       if (newThreadPerCategory && !is_default && !is_prefix_category) {
-        pstore = shared_ptr<StoreQueue>(new StoreQueue(model, category));
+        pstore = shared_ptr<StoreQueue>(new StoreQueue(model, category, thread_name));
       } else {
         pstore = model;
         already_created = true;
@@ -987,7 +1073,7 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
       is_model = newThreadPerCategory && categories;
 
       pstore =
-        shared_ptr<StoreQueue>(new StoreQueue(type, store_name, checkPeriod,
+        shared_ptr<StoreQueue>(new StoreQueue(type, store_name, thread_name, checkPeriod,
                                               is_model, multi_category));
     }
   } catch (...) {
