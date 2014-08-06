@@ -332,7 +332,7 @@ const char* scribeHandler::statusAsString(fb_status status) {
 // Should be called while holding a writeLock on scribeHandlerLock
 bool scribeHandler::createCategoryFromModel(
   const string &category, const boost::shared_ptr<StoreQueue> &model,
-  string&  thread_name) {
+  const string&  thread_name) {
 
   // Make sure the category name is sane.
   try {
@@ -910,8 +910,9 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
     unsigned long int num_store_threads = -1;
     if (!store_conf->getUnsigned("num_store_threads", num_store_threads)
       || is_default_category || is_prefix_category || (num_store_threads <= 1)) {
+    	LOG_OPER("AAAAAAAAAAA single thread ");
       shared_ptr<StoreQueue> result =
-          configureStoreCategory(store_conf, category_list[0], model, empty_string);
+          configureStoreCategory(store_conf, category_list[0], model);
       if (result == NULL) {
         return false;
       }
@@ -979,11 +980,17 @@ shared_ptr<StoreQueue> scribeHandler::configureStoreCategory(
   pStoreConf store_conf,                       //configuration for store
   const string &category,                      //category name
   const boost::shared_ptr<StoreQueue> &model,  //model to use (optional)
-  string& thread_name,                         //storeQueue name
-  bool category_list) {                        //is a list of stores?
+  bool category_list,                        //is a list of stores?
+  const string& thread_name) {                        //storeQueue name
 
   bool is_default = false;
   bool already_created = false;
+
+  if (thread_name.empty()) {
+	 LOG_OPER("AAAAAAAAAAAAAAAA thread_name is empty");
+  } else {
+     LOG_OPER("NNNNNNNNNNNNNNNNNNNNNNNn thread_name is not empty");
+  }
 
   if (category.empty()) {
     setStatusDetails("Bad config - store with blank category");
