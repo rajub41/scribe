@@ -427,8 +427,9 @@ bool scribeHandler::throttleRequest(const vector<LogEntry>&  messages) {
       }
     }
   }
-  LOG_OPER("throttle denying request for queue size <%llu>. It would exceed max queue size <%llu>", size, maxQueueSize);
-  incCounter(category, "denied for queue size");
+  LOG_OPER("throttle denying request for queue size <%llu> with a batch of <%ld> messages for [%s] category."
+     " It would exceed max queue size <%llu>", size, messages.size(), category, maxQueueSize);
+  incCounter(category, "denied for queue size", messages.size());
   return true;
 }
 
