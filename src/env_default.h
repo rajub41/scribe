@@ -59,13 +59,12 @@ const std::string scribeversion("2.2");
  */
 #define LOG_OPER(format_string,...)                                     \
   {                                                                     \
-    time_t now;                                                         \
-    char dbgtime[26] ;                                                  \
-    time(&now);                                                         \
-    ctime_r(&now, dbgtime);                                             \
-    dbgtime[24] = '\0';                                                 \
     struct timeval tv;                                                  \
     gettimeofday(&tv, NULL);                                            \
+    time_t now = tv.tv_sec;                                             \
+    char dbgtime[26] ;                                                  \
+    ctime_r(&now, dbgtime);                                             \
+    dbgtime[24] = '\0';                                                 \
     long numMillis = (tv.tv_usec / 1000);                               \
     fprintf(stderr,"[%s %ld] " #format_string " \n", dbgtime,numMillis,##__VA_ARGS__); \
   }
