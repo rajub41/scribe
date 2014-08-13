@@ -401,6 +401,14 @@ bool scribeHandler::throttleRequest(const vector<LogEntry>&  messages) {
        cat_iter != categories.end();
        ++cat_iter) {
     shared_ptr<store_list_t> pstores = cat_iter->second;
+    string category = cat_iter->first;
+    unsigned long long maxQueueSizeOfCategory = maxQueueSize;
+    for (category_queue_size_map_t::iterator cat_queue_iter = categoryQueueSizeMap.begin();
+    		cat_queue_iter != categoryQueueSizeMap.end(); cat_queue_iter) {
+      if ((cat_queue_iter->first).compare(category) == 0) {
+    	  maxQueueSizeOfCategory = cat_queue_iter->second;
+      }
+    }
     if (!pstores) {
       throw std::logic_error("throttle check: iterator in category map holds null pointer");
     }
@@ -411,7 +419,7 @@ bool scribeHandler::throttleRequest(const vector<LogEntry>&  messages) {
         throw std::logic_error("throttle check: iterator in store map holds null pointer");
       } else {
         unsigned long long size = (*store_iter)->getSize();
-        if (size > maxQueueSize) {
+        if (size > maxQueueSizeOfCategory) {
           LOG_OPER("throttle denying request for queue size <%llu>. It would exceed max queue size <%llu>", size, maxQueueSize);
           incCounter((*store_iter)->getCategoryHandled(), "denied for queue size");
           return true;
@@ -872,11 +880,15 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
   vector<string> category_list;
   shared_ptr<StoreQueue> model;
   bool single_category = true;
+  unsigned long long maxQueueSizePerStream;
 
 
   // Check if a single category is specified
   if (store_conf->getString("category", category)) {
     category_list.push_back(category);
+    if (store_conf->getUnsignedLongLong("max_queue_size_per_stream", maxQueueSizePerStream)) {
+      categoryQueueSizeMap.insert(std:pair<string, unsigned long long>(category, maxQueueSizePerStream));
+    }
   }
 
   // Check if multiple categories are specified
