@@ -64,7 +64,10 @@ const std::string scribeversion("2.2");
     time(&now);                                                         \
     ctime_r(&now, dbgtime);                                             \
     dbgtime[24] = '\0';                                                 \
-    fprintf(stderr,"[%s] " #format_string " \n", dbgtime,##__VA_ARGS__); \
+    struct timeval tv;                                                  \
+    gettimeofday(&tv, NULL);                                            \
+    long numMillis = (tv.tv_usec / 1000);                               \
+    fprintf(stderr,"[%s %ld] " #format_string " \n", dbgtime,numMillis,##__VA_ARGS__); \
   }
 
 
