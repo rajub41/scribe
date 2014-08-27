@@ -930,18 +930,21 @@ bool scribeHandler::configureStore(pStoreConf store_conf, int *numstores) {
 			category[category.size() - 1] == '*');
     bool is_default_category = (!category.empty() && category.compare("default") == 0);
 
-    unsigned long int num_store_threads = -1;
-    if (!store_conf->getUnsigned("num_store_threads", num_store_threads)
-      || is_default_category || is_prefix_category || (num_store_threads <= 1)) {
+    signed long int num_store_threads = -1;
+    if (is_default_category || is_prefix_category
+       || (!store_conf->getSigned("num_store_threads", num_store_threads)
+       || (num_store_threads <= 1))) {
       shared_ptr<StoreQueue> result =
         configureStoreCategory(store_conf, category, model);
       if (result == NULL) {
+        LOG_OPER("Unable to create store queue for [%s] category", category.c_str());
         return false;
       }
     } else {
       const char* category_str = category.c_str();
-      LOG_OPER("Configuring [%lu] store queues for [%s] ", num_store_threads, category_str);
-      for (std::size_t i = 0; i < num_store_threads; i++) {
+      LOG_OPER("Configuring [%ld] store queues for [%s] ", num_store_threads, category_str);
+      signed long int i;
+      for (i = 0; i < num_store_threads; i++) {
         ostringstream ostr;
         ostr << "thread_" << i;
         const std::string thread_name = ostr.str();
